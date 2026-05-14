@@ -141,6 +141,24 @@ class JobAlreadyTerminalError(GcpError):
     message = "该 Job 已结束，无法取消"
 
 
+class ChapterNotFoundError(GcpError):
+    http_status = 404
+    error_code = "chapter_not_found"
+    message = "指定的 chapter_id 不存在于本包剧情框架"
+
+
+class SectionNotFoundError(GcpError):
+    http_status = 404
+    error_code = "section_not_found"
+    message = "指定的 section_id 在该章中不存在或本节资产缺失"
+
+
+class AutoOpenerFailedError(GcpError):
+    http_status = 500
+    error_code = "auto_opener_failed"
+    message = "本节自动开场失败"
+
+
 class LlmAuthenticationError(GcpError):
     """DeepSeek 返回 401/403：多为 API Key 错误、过期或环境变量含多余空白。"""
 

@@ -32,7 +32,7 @@ pytest -q
 - **M2**：`POST .../commit-intake`（五字段 + `intake.json` / `analysis.json`）
 - **M3**：`POST .../jobs/framework` + `GET .../jobs/{job_id}`（异步生成 `framework.json` / `roster.json`）
 - **M4**：`POST .../jobs/world` + `POST .../jobs/{job_id}/cancel`（`sections/ch*_sec*/` 小节资产）
-- **M5+**：见 `docs/engineering/01-技术方案.md` §9
+- **M5（进行中）**：`GET .../runtime`、`POST .../sections/{ch}/{sec}/enter`（自动开场）；**待续**：`POST/GET .../turns`、`POST .../auto-opener`
 
 ## 目录速览
 

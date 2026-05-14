@@ -6,15 +6,15 @@
 
 ## 当前状态
 
-**`main` 已合并 M0~M4 后端能力**：场景包 CRUD、五字段 `commit-intake`、**framework Job**、**world Job**（全书小节 `narrative.json` / `mission.json`）、**Job 取消**（world 清空 `sections/`），以及部署脚本加固。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（推荐 **`server-one-shot-sync.sh`**）。
+**`main` 已合并 M0~M5（部分）后端能力**：在 M4 基础上增加 **`GET .../runtime`** 与 **`POST .../sections/{ch}/{sec}/enter`**（含 §6.6.5 **自动开场** 写入 `turns.jsonl`）。**尚未实现**：用户发回合 `POST .../turns`、NPC 续聊、§4.3 `auto-opener` 重试接口等（仍属 M5 后续）。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（推荐 **`server-one-shot-sync.sh`**）。
 
-- 后端：FastAPI + `health` + `scenario-packages`（含 **`commit-intake`**、**`jobs/framework`**、**`jobs/world`**、**`jobs/{job_id}`**、**`jobs/{job_id}/cancel`**）
+- 后端：FastAPI + `health` + `scenario-packages`（含 **runtime / enter**、前述 M1~M4 能力）
 - 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
-- 调试页：`backend/app/debug_ui/`（② 包列表 ③ 五字段 ④ framework Job ⑤ world Job）
+- 调试页：`backend/app/debug_ui/`（②~⑥，含进节与 runtime）
 - 部署：`deploy/`（含 **`server-one-shot-sync.sh`** 一键同步）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-**下一步**：按技术方案 §9 推进 **M5**（运行期对话、进节 `enter`、自动开场）及以后阶段。
+**下一步**：补全 M5——`POST .../turns`（用户发言 + NPC 续聊）、`GET .../turns`、`POST .../auto-opener`，以及 §6.6.4 规则校验。
 
 ---
 
@@ -85,7 +85,7 @@
 | M2 | 五字段录入 + DeepSeek 扩写 | ✅ 已合并 main |
 | M3 | 框架 + 角色 Job | ✅ 已合并 main |
 | M4 | 全书小节 Job + 取消清库 | ✅ 已合并 main |
-| M5 | 聊天 + 自动开场 | 待开始 |
+| M5 | 聊天 + 自动开场 | 进行中（§4.1 runtime、§4.2 enter 已合并；对话 turns 待续） |
 | M5.5 | R1 提示 + R2 复盘 | 待开始 |
 | M6 ~ M9 | C 端前端 P1~P3a 全部页面 | 待开始 |
 

@@ -298,10 +298,20 @@
         </section>
 
         <section class="card">
-            <h2>⑥ 运行期：自动开场 + 对话 <span class="tag">M5（待实现）</span></h2>
-            <p class="placeholder">
-                M5 阶段开通：进节自动开场（§6.6.5）、用户发送 → NPC 续聊（§6.6）、查看 <code>turns.jsonl</code>。
+            <h2>⑥ 运行期：进节 + 拉 runtime <span class="tag">M5 / API §4.1~§4.2</span></h2>
+            <p style="font-size:13px;color:var(--text-soft);margin:0 0 12px;">
+                需 <code>creation_succeeded</code> 且已完成 ⑤（每节有 <code>narrative.json</code> / <code>mission.json</code>）。首次 <strong>进节</strong>会调 DeepSeek 写首条 NPC 开场到 <code>turns.jsonl</code>。
             </p>
+            <div class="toolbar">
+                <label for="in-enter-ch" style="margin:0;">章</label>
+                <input type="number" id="in-enter-ch" value="1" min="1" style="width:72px;" />
+                <label for="in-enter-sec" style="margin:0;">节</label>
+                <input type="number" id="in-enter-sec" value="1" min="1" style="width:72px;" />
+                <button id="btn-enter-section" type="button">POST enter（进节）</button>
+                <button id="btn-get-runtime" type="button">GET runtime</button>
+            </div>
+            <div class="split-title">最近一次运行期响应</div>
+            <pre class="output" id="out-runtime"><span class="placeholder">进节或拉 runtime 后显示 JSON</span></pre>
         </section>
 
         <section class="card">

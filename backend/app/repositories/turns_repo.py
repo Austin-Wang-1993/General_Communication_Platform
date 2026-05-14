@@ -1,0 +1,64 @@
+"""本节对话回合 `turns.jsonl`（技术方案 §5：`sections/ch*_sec*/turns.jsonl`）。"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+from pathlib import Path
+from typing import Any
+
+from app.errors import RepositoryIoError
+
+
+class TurnsRepo:
+    def __init__(self, data_dir: Path) -> None:
+        self._scenarios = data_dir / "scenarios"
+
+    def turns_path(self, scenario_id: str, chapter_id: int, section_id: int) -> Path:
+        return (
+            self._scenarios
+            / scenario_id
+            / "sections"
+            / f"ch{chapter_id}_sec{section_id}"
+            / "turns.jsonl"
+        )
+
+    async def read_all(self, scenario_id: str, chapter_id: int, section_id: int) -> list[dict[str, Any]]:
+        path = self.turns_path(scenario_id, chapter_id, section_id)
+
+        def _read() -> list[dict[str, Any]]:
+            if not path.exists():
+                return []
+            out: list[dict[str, Any]] = []
+            try:
+                with path.open(encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        out.append(json.loads(line))
+            except Exception as e:
+                raise RepositoryIoError(
+                    message="读取 turns.jsonl 失败",
+                    details={"path": str(path), "error": str(e)},
+                ) from e
+            return out
+
+        return await asyncio.to_thread(_read)
+
+    async def append(self, scenario_id: str, chapter_id: int, section_id: int, turn: dict[str, Any]) -> None:
+        path = self.turns_path(scenario_id, chapter_id, section_id)
+        line = json.dumps(turn, ensure_ascii=False) + "\n"
+
+        def _append() -> None:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with path.open("a", encoding="utf-8") as f:
+                    f.write(line)
+            except Exception as e:
+                raise RepositoryIoError(
+                    message="追加 turns.jsonl 失败",
+                    details={"path": str(path), "error": str(e)},
+                ) from e
+
+        await asyncio.to_thread(_append)

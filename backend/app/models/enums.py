@@ -22,11 +22,14 @@ class LifecyclePhase(str, Enum):
     RUNTIME_ACTIVE = "runtime_active"
 
 
-# 以下枚举将在后续 milestone 启用，先占位定义保持单一真源
-# class TurnWriter(str, Enum):   # PRD §6.6.1 — M5 启用
-#     MODEL_NPC = "model_npc"
-#     HUMAN_USER = "human_user"
+class TurnWriter(str, Enum):
+    """PRD §6.6.1：回合写入来源。"""
 
+    MODEL_NPC = "model_npc"
+    HUMAN_USER = "human_user"
+
+
+# 以下枚举将在后续 milestone 启用，先占位定义保持单一真源
 # class HintStatus(str, Enum):   # PRD §6.7.1 — M5.5 启用
 #     READY = "ready"
 #     STALE = "stale"

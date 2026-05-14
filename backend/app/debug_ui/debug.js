@@ -387,6 +387,60 @@
     });
   }
 
+  // === M5：进节 + runtime ===
+  const btnEnterSection = document.getElementById('btn-enter-section');
+  const btnGetRuntime = document.getElementById('btn-get-runtime');
+  const outRuntime = document.getElementById('out-runtime');
+  const inEnterCh = document.getElementById('in-enter-ch');
+  const inEnterSec = document.getElementById('in-enter-sec');
+
+  if (btnEnterSection && outRuntime) {
+    btnEnterSection.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
+      const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
+      btnEnterSection.disabled = true;
+      outRuntime.innerHTML = '<span class="placeholder">进节请求中（可能需数十秒，自动开场调 LLM）…</span>';
+      try {
+        const result = await apiCall(
+          'POST',
+          `/scenario-packages/${selectedId}/sections/${ch}/${sec}/enter`,
+          {},
+        );
+        renderResult(rawOut, result);
+        renderResult(outRuntime, result);
+        if (result.ok) {
+          await refreshList(true);
+          const titleEl = document.querySelector('#package-list li.selected .pkg-title');
+          const t = titleEl ? titleEl.textContent : '';
+          await loadDetail(selectedId, t);
+        }
+      } finally {
+        btnEnterSection.disabled = false;
+      }
+    });
+  }
+
+  if (btnGetRuntime && outRuntime) {
+    btnGetRuntime.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      btnGetRuntime.disabled = true;
+      try {
+        const result = await apiCall('GET', `/scenario-packages/${selectedId}/runtime`);
+        renderResult(rawOut, result);
+        renderResult(outRuntime, result);
+      } finally {
+        btnGetRuntime.disabled = false;
+      }
+    });
+  }
+
   // 暴露给后续阶段扩展使用
   window.GcpDebug = { apiCall, renderResult, refreshList };
 })();

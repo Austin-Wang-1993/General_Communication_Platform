@@ -101,3 +101,18 @@ def get_job_control_service() -> "JobControlService":
 
     pr = get_package_repo()
     return JobControlService(package_repo=pr, job_repo=JobRepo(pr.data_dir))
+
+
+def get_runtime_service() -> "RuntimeService":
+    from app.repositories.turns_repo import TurnsRepo
+    from app.services.runtime_service import RuntimeService
+
+    pr = get_package_repo()
+    settings = get_settings()
+    return RuntimeService(
+        package_repo=pr,
+        framework_repo=FrameworkRepo(pr.data_dir),
+        roster_repo=RosterRepo(pr.data_dir),
+        turns_repo=TurnsRepo(pr.data_dir),
+        llm_client=LlmClient(settings),
+    )
