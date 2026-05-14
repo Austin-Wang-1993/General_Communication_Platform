@@ -1,0 +1,13 @@
+[project]
+name = "gcp-backend"
+version = "0.1.0"
+description = "通用英语对话练习 · 后端服务（M0 骨架）"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

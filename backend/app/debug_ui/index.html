@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>GCP 调试页</title>
+    <style>
+        :root {
+            --bg: #fdfaf5;
+            --surface: #ffffff;
+            --text: #1f1d1a;
+            --text-soft: #6b6457;
+            --accent: #c2410c;
+            --border: #e7e1d4;
+            --ok: #2e7d32;
+            --err: #b91c1c;
+            --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                         "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.55;
+        }
+        header {
+            max-width: 960px;
+            margin: 0 auto 16px;
+        }
+        h1 {
+            font-size: 20px;
+            margin: 0 0 4px;
+        }
+        .subtitle {
+            color: var(--text-soft);
+            font-size: 14px;
+        }
+        main {
+            max-width: 960px;
+            margin: 0 auto;
+            display: grid;
+            gap: 16px;
+        }
+        section.card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        h2 {
+            font-size: 16px;
+            margin: 0 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tag {
+            font-size: 11px;
+            color: var(--text-soft);
+            border: 1px solid var(--border);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: normal;
+        }
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            min-height: 44px;
+            min-width: 44px;
+        }
+        button:hover { opacity: 0.9; }
+        button:active { opacity: 0.8; }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        pre.output {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f6f0e3;
+            border-radius: 6px;
+            font-family: var(--mono);
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-height: 60px;
+        }
+        .status-ok { color: var(--ok); font-weight: 600; }
+        .status-err { color: var(--err); font-weight: 600; }
+        .placeholder {
+            color: var(--text-soft);
+            font-style: italic;
+            font-size: 13px;
+        }
+        footer {
+            max-width: 960px;
+            margin: 24px auto 0;
+            font-size: 12px;
+            color: var(--text-soft);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>GCP 调试页</h1>
+        <div class="subtitle">
+            通用英语对话练习产品 · 后端调试入口
+            （详见 <code>docs/engineering/03-API 接口文档.md</code>）
+        </div>
+    </header>
+
+    <main>
+        <!-- M0: 健康检查 -->
+        <section class="card">
+            <h2>① 健康检查 <span class="tag">M0 / API §1.1</span></h2>
+            <button id="btn-health">运行健康检查</button>
+            <pre class="output" id="out-health"><span class="placeholder">点击上方按钮调用 GET /api/v1/health</span></pre>
+        </section>
+
+        <!-- M1+ 占位 -->
+        <section class="card">
+            <h2>② 场景包管理 <span class="tag">M1（待实现）</span></h2>
+            <p class="placeholder">
+                M1 阶段开通：场景包列表、新建空包、删除场景包。<br>
+                对应 API 文档 §2.1 ~ §2.5。
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>③ 五字段录入与扩写 <span class="tag">M2（待实现）</span></h2>
+            <p class="placeholder">
+                M2 阶段开通：提交五字段 → 调 §6.1 扩写智能体 → 查看 <code>analysis.json</code>。
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>④ 框架 + 角色 Job <span class="tag">M3（待实现）</span></h2>
+            <p class="placeholder">
+                M3 阶段开通：触发 framework job → 轮询 <code>current_step_label</code> → 查看 <code>framework.json</code> / <code>roster.json</code>。
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>⑤ 全书小节扩写 Job <span class="tag">M4（待实现）</span></h2>
+            <p class="placeholder">
+                M4 阶段开通：触发 world job → 轮询 <code>progress_hint</code> → 查看每节 <code>narrative.json</code> / <code>mission.json</code>。
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>⑥ 运行期：自动开场 + 对话 <span class="tag">M5（待实现）</span></h2>
+            <p class="placeholder">
+                M5 阶段开通：进节自动开场（§6.6.5）、用户发送 → NPC 续聊（§6.6）、查看 <code>turns.jsonl</code>。
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>⑦ R1 提示 + R2 复盘 <span class="tag">M5.5（待实现）</span></h2>
+            <p class="placeholder">
+                M5.5 阶段开通：等待用户时拉提示（§6.7）、点本节复盘（§6.8）。
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>⑧ LLM 调用日志 <span class="tag">M2+ 起持续</span></h2>
+            <p class="placeholder">
+                展示最近 50 条 LLM 调用：agent / 输入摘要 / 输出原文 / 耗时 / 是否成功。
+            </p>
+        </section>
+    </main>
+
+    <footer>
+        <p>
+            本调试页与 C 端前端解耦，部署位置：<code>backend/app/debug_ui/index.html</code><br>
+            Nginx 通过 <code>/debug/</code> 别名指向（生产）或 <code>/debug-ui/</code>（同进程开发）
+        </p>
+    </footer>
+
+    <script src="./debug.js"></script>
+</body>
+</html>
