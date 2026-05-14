@@ -1,7 +1,7 @@
 """FastAPI 应用入口。
 
 按 `docs/engineering/02-代码架构与目录约定.md` §2.7 后端目录全图组织。
-M0 阶段：仅挂载 health 路由 + 调试页静态资源；M1+ 逐步接入业务路由。
+M0：health + 调试页；M1：场景包 CRUD；M2：`commit-intake` 五字段与扩写。
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="GCP Backend",
-        description="通用英语对话练习 · 后端 API（M0 骨架）",
+        description="通用英语对话练习 · 后端 API（M0~M2）",
         version=__version__,
         lifespan=lifespan,
     )
@@ -68,7 +68,7 @@ def create_app() -> FastAPI:
     # 路由挂载
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(scenario_packages.router, prefix="/api/v1")
-    # M2+ 在此追加：creation_jobs / runtime / hints / analytics
+    # M3+ 在此追加：creation_jobs / runtime / hints / analytics
 
     # 调试页静态资源（同进程下访问 /debug-ui/，Nginx 通过 /debug/ 别名也可指向 backend/app/debug_ui/）
     debug_ui_dir = Path(__file__).parent / "debug_ui"

@@ -81,6 +81,48 @@ class RepositoryIoError(GcpError):
     message = "数据文件读写失败"
 
 
+class FrameworkAlreadyExistsError(GcpError):
+    http_status = 409
+    error_code = "framework_already_exists"
+    message = "包内已有剧情框架，如需修改五字段并重新创作，请设置 force_reset_creation 为 true"
+
+
+class IntakeFieldTooShortError(GcpError):
+    http_status = 422
+    error_code = "intake_field_too_short"
+    message = "五字段长度不足"
+
+
+class IntakeFieldTooLongError(GcpError):
+    http_status = 422
+    error_code = "intake_field_too_long"
+    message = "五字段长度超出上限"
+
+
+class DisplayNameInvalidError(GcpError):
+    http_status = 422
+    error_code = "display_name_invalid"
+    message = "显示名包含非法字符或修剪后为空"
+
+
+class IntakeUnrelatedTopicError(GcpError):
+    http_status = 422
+    error_code = "intake_unrelated_topic"
+    message = "场景描述与目标在主题上缺乏关联，请调整后再试"
+
+
+class LlmTimeoutError(GcpError):
+    http_status = 504
+    error_code = "llm_timeout"
+    message = "语言模型响应超时，请稍后重试"
+
+
+class LlmFailureError(GcpError):
+    http_status = 500
+    error_code = "llm_failure"
+    message = "语言模型调用失败"
+
+
 # === FastAPI 全局异常 handler ===
 
 

@@ -10,13 +10,15 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Response, status
 
-from app.dependencies import get_scenario_package_service
+from app.dependencies import get_intake_service, get_scenario_package_service
+from app.models.intake import CommitIntakeRequest, CommitIntakeResponse
 from app.models.package import (
     CreatePackageRequest,
     CreatePackageResponse,
     PackageListResponse,
     PackageSummary,
 )
+from app.services.intake_service import IntakeService
 from app.services.scenario_package_service import ScenarioPackageService
 
 router = APIRouter(prefix="/scenario-packages", tags=["scenario-packages"])
@@ -59,6 +61,20 @@ async def list_scenario_packages(
     """API 文档 §2.2。按 `updated_at` 降序。"""
     items = await svc.list_all()
     return PackageListResponse(packages=items)
+
+
+@router.post(
+    "/{scenario_id}/commit-intake",
+    response_model=CommitIntakeResponse,
+    summary="提交五字段并扩写（P2.1「下一步」）",
+)
+async def commit_intake(
+    scenario_id: str,
+    body: CommitIntakeRequest,
+    svc: IntakeService = Depends(get_intake_service),
+) -> CommitIntakeResponse:
+    """API 文档 §2.5：校验 → 可选 G3 → LLM 扩写 → 落盘 intake.json / analysis.json。"""
+    return await svc.commit_intake(scenario_id, body)
 
 
 @router.get(

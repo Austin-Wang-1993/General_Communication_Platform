@@ -11,8 +11,12 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from app.clients.llm_client import LlmClient
 from app.config import Settings, get_settings
+from app.repositories.analysis_repo import AnalysisRepo
+from app.repositories.intake_repo import IntakeRepo
 from app.repositories.package_repo import PackageRepo
+from app.services.intake_service import IntakeService
 from app.services.scenario_package_service import ScenarioPackageService
 
 
@@ -36,3 +40,15 @@ def get_package_repo(settings: Settings = None) -> PackageRepo:  # type: ignore[
 def get_scenario_package_service() -> ScenarioPackageService:
     """获取 ScenarioPackageService 实例。"""
     return ScenarioPackageService(package_repo=get_package_repo())
+
+
+def get_intake_service() -> IntakeService:
+    """获取 IntakeService（M2：五字段 + 扩写）。"""
+    pr = get_package_repo()
+    settings = get_settings()
+    return IntakeService(
+        package_repo=pr,
+        intake_repo=IntakeRepo(pr.data_dir),
+        analysis_repo=AnalysisRepo(pr.data_dir),
+        llm_client=LlmClient(settings),
+    )
