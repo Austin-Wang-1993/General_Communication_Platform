@@ -1,0 +1,41 @@
+# systemd 服务单元 · GCP 后端
+#
+# 安装位置：/etc/systemd/system/gcp-backend.service
+# 操作：
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gcp-backend
+#   sudo systemctl status gcp-backend
+#   sudo journalctl -u gcp-backend -f      # 实时日志
+#
+# 详见 docs/engineering/01-技术方案.md §11.1 步骤 8。
+
+[Unit]
+Description=GCP Backend (通用英语对话练习 · FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/gcp/backend
+
+# 环境变量从 /etc/gcp/backend.env 注入（含 DEEPSEEK_API_KEY）
+EnvironmentFile=/etc/gcp/backend.env
+
+# 用 venv 中的 uvicorn 启动；超时与技术方案 §11.6 对齐
+ExecStart=/opt/gcp/backend/.venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --timeout-keep-alive 180 \
+    --log-level info
+
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# 简单的安全加固（首版可保留默认）
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
