@@ -310,9 +310,14 @@
                 <button id="btn-enter-section" type="button">POST enter（进节）</button>
                 <button id="btn-get-runtime" type="button">GET runtime</button>
             </div>
-            <div class="field-row" style="margin-top:10px;align-items:flex-start;">
-                <label for="in-turn-recipient" style="margin:0;">recipient_id</label>
-                <input type="text" id="in-turn-recipient" placeholder="npc_xxx" style="flex:1;min-width:120px;" />
+            <div class="field-row" style="margin-top:10px;align-items:flex-start;flex-wrap:wrap;">
+                <span style="margin:0 8px 0 0;flex-shrink:0;">发给谁（本节 NPC）</span>
+                <div
+                    id="turn-recipient-radios"
+                    style="flex:1;min-width:200px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;"
+                >
+                    <span class="placeholder">请先进节或 GET runtime 以加载本节可对话 NPC</span>
+                </div>
             </div>
             <div class="field-row" style="align-items:flex-start;">
                 <label for="in-turn-content" style="margin:0;">content</label>

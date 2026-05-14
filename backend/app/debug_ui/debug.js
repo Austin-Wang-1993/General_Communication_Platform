@@ -74,6 +74,56 @@
       .replace(/>/g, '&gt;');
   }
 
+  /** ⑥ 发送回合：收件人单选（来自本节 appearing_npc_ids + roster 显示名） */
+  function clearTurnRecipientRadios(message) {
+    const container = document.getElementById('turn-recipient-radios');
+    if (!container) return;
+    container.innerHTML =
+      '<span class="placeholder">' +
+      escapeHtml(message || '请先进节或 GET runtime 以加载本节可对话 NPC') +
+      '</span>';
+  }
+
+  function fillTurnRecipientRadiosFromRuntimePayload(data) {
+    const container = document.getElementById('turn-recipient-radios');
+    if (!container || !data) return;
+    const sn = data.section_narrative;
+    const rosterRoot = data.character_roster;
+    const ids = sn && Array.isArray(sn.appearing_npc_ids) ? sn.appearing_npc_ids : [];
+    const chars =
+      rosterRoot && Array.isArray(rosterRoot.characters) ? rosterRoot.characters : [];
+    const nameById = {};
+    chars.forEach((c) => {
+      if (c && c.character_id) nameById[c.character_id] = c.name || c.character_id;
+    });
+    if (ids.length === 0) {
+      clearTurnRecipientRadios('本节 appearing_npc_ids 为空，请检查 narrative.json');
+      return;
+    }
+    container.innerHTML = '';
+    ids.forEach((id, idx) => {
+      const name = nameById[id] || id;
+      const lab = document.createElement('label');
+      lab.style.display = 'inline-flex';
+      lab.style.alignItems = 'center';
+      lab.style.gap = '6px';
+      lab.style.cursor = 'pointer';
+      const inp = document.createElement('input');
+      inp.type = 'radio';
+      inp.name = 'turn-recipient-npc';
+      inp.value = id;
+      if (idx === 0) inp.checked = true;
+      lab.appendChild(inp);
+      lab.appendChild(document.createTextNode(name + ' · ' + id));
+      container.appendChild(lab);
+    });
+  }
+
+  function getSelectedTurnRecipientId() {
+    const el = document.querySelector('input[name="turn-recipient-npc"]:checked');
+    return el ? el.value : '';
+  }
+
   // === M0：健康检查按钮 ===
   const healthBtn = document.getElementById('btn-health');
   const healthOut = document.getElementById('out-health');
@@ -102,12 +152,16 @@
   let selectedId = null;
 
   function setSelected(id, title) {
+    const prevId = selectedId;
     selectedId = id;
     deleteBtn.disabled = !id;
     selectedLabel.textContent = id ? `· ${id.slice(0, 8)}… ${title ? '(' + title + ')' : ''}` : '（未选中）';
     document.querySelectorAll('#package-list li').forEach((li) => {
       li.classList.toggle('selected', li.dataset.id === id);
     });
+    if (prevId !== id) {
+      clearTurnRecipientRadios();
+    }
   }
 
   async function refreshList(preserveSelected = false) {
@@ -412,7 +466,8 @@
         );
         renderResult(rawOut, result);
         renderResult(outRuntime, result);
-        if (result.ok) {
+        if (result.ok && result.payload) {
+          fillTurnRecipientRadiosFromRuntimePayload(result.payload);
           await refreshList(true);
           const titleEl = document.querySelector('#package-list li.selected .pkg-title');
           const t = titleEl ? titleEl.textContent : '';
@@ -435,6 +490,9 @@
         const result = await apiCall('GET', `/scenario-packages/${selectedId}/runtime`);
         renderResult(rawOut, result);
         renderResult(outRuntime, result);
+        if (result.ok && result.payload) {
+          fillTurnRecipientRadiosFromRuntimePayload(result.payload);
+        }
       } finally {
         btnGetRuntime.disabled = false;
       }
@@ -445,8 +503,13 @@
   const btnGetTurns = document.getElementById('btn-get-turns');
   const btnAutoOpener = document.getElementById('btn-auto-opener');
   const inTurnContent = document.getElementById('in-turn-content');
-  const inTurnRecipient = document.getElementById('in-turn-recipient');
   const inTurnsLimit = document.getElementById('in-turns-limit');
+
+  function onEnterChSecChanged() {
+    clearTurnRecipientRadios('章/节已变更，请重新进节或 GET runtime 以刷新 NPC 列表');
+  }
+  if (inEnterCh) inEnterCh.addEventListener('change', onEnterChSecChanged);
+  if (inEnterSec) inEnterSec.addEventListener('change', onEnterChSecChanged);
 
   if (btnPostTurn && outRuntime) {
     btnPostTurn.addEventListener('click', async () => {
@@ -457,7 +520,11 @@
       const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
       const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
       const content = (inTurnContent && inTurnContent.value) || '';
-      const recipient_id = (inTurnRecipient && inTurnRecipient.value) || '';
+      const recipient_id = getSelectedTurnRecipientId();
+      if (!recipient_id) {
+        alert('请先 POST 进节或 GET runtime，在本节 NPC 单选项中选择收件人后再发送。');
+        return;
+      }
       btnPostTurn.disabled = true;
       try {
         const result = await apiCall(
