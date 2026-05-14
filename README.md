@@ -6,7 +6,9 @@
 
 ## 当前状态
 
-🚀 **M0 骨架已就位**（仓库结构 + 健康检查端点 + 前端 Hello 页 + 部署三件套）。
+🚀 **M0 骨架已落地，在 feature 分支 `cursor/m0-skeleton-a4d3` 上等用户验收后合并 main**。
+
+> 按双分支工作流（[技术方案 §11.2](docs/engineering/01-技术方案.md)）：feature 分支 → 用户拉取测试 → 合并 main → 拉 main 作基线。**首次部署时 main 只有文档**，需要先 checkout 到 feature 分支拉代码——详见[腾讯云部署指南](docs/operations/01-腾讯云部署指南.md) **步骤 3.5**。
 
 - 后端：FastAPI + `/api/v1/health` 端点
 - 前端：Vite + React + TS + Tailwind + P1 欢迎页占位 + 健康检查按钮
