@@ -22,8 +22,8 @@
 #   0) 前置检查（git 仓库、git/curl/sudo、远端分支存在）
 #   1) git fetch + git checkout -B <分支> origin/<分支>
 #   2) 记录 requirements / package-lock 哈希
-#   3) venv + pip install（按需）
-#   4) npm ci + npm run build（按需）
+#   3) venv + pip install（按需；GCP_SYNC_FULL=1 时每次全量 pip）
+#   4) npm ci + npm run build（按需；GCP_SYNC_FULL=1 时每次 npm ci）
 #   5) systemctl restart gcp-backend（必须已注册单元）+ 本机健康检查
 #   6) systemctl reload nginx（若已安装）
 #   7) OpenAPI 路由探测（仅供参考；M0/main 无 scenario-packages 属正常）
@@ -38,6 +38,8 @@ FRONTEND_DIR="${REPO_DIR}/frontend"
 VENV_DIR="${BACKEND_DIR}/.venv"
 LOCAL_HEALTH_URL="${LOCAL_HEALTH_URL:-http://127.0.0.1:8000/api/v1/health}"
 LOCAL_OPENAPI_URL="${LOCAL_OPENAPI_URL:-http://127.0.0.1:8000/openapi.json}"
+# GCP_SYNC_FULL=1：每次均 pip install -r + npm ci（更慢、更稳；server-one-shot-sync.sh 默认开启）
+SYNC_FULL="${GCP_SYNC_FULL:-0}"
 
 color() {
     local code="$1"; shift
@@ -98,6 +100,11 @@ if [ ! -d "${VENV_DIR}" ]; then
     "${VENV_DIR}/bin/pip" install --upgrade pip
     "${VENV_DIR}/bin/pip" install -r "${BACKEND_DIR}/requirements.txt"
     ok "venv 已创建并安装依赖"
+elif [ "${SYNC_FULL}" = "1" ]; then
+    info "GCP_SYNC_FULL=1：全量 pip install -r requirements.txt"
+    "${VENV_DIR}/bin/pip" install --upgrade pip
+    "${VENV_DIR}/bin/pip" install -r "${BACKEND_DIR}/requirements.txt"
+    ok "后端依赖已全量重装"
 elif [ -n "${AFTER_REQ}" ] && [ "${BEFORE_REQ}" != "${AFTER_REQ}" ]; then
     info "检测到 backend/requirements.txt 变动，重装依赖"
     "${VENV_DIR}/bin/pip" install -r "${BACKEND_DIR}/requirements.txt"
@@ -112,6 +119,10 @@ AFTER_LOCK=""
 
 if [ ! -d "${FRONTEND_DIR}/node_modules" ]; then
     warn "未发现 frontend/node_modules；首次安装"
+    (cd "${FRONTEND_DIR}" && npm ci)
+    NEED_BUILD=1
+elif [ "${SYNC_FULL}" = "1" ]; then
+    info "GCP_SYNC_FULL=1：全量 npm ci"
     (cd "${FRONTEND_DIR}" && npm ci)
     NEED_BUILD=1
 elif [ -n "${AFTER_LOCK}" ] && [ "${BEFORE_LOCK}" != "${AFTER_LOCK}" ]; then

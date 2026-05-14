@@ -11,7 +11,7 @@
 - 后端：FastAPI + `/api/v1/health` + **`/api/v1/scenario-packages`**（列表 / 新建 / 详情 / 删除）
 - 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
 - 调试页：`backend/app/debug_ui/`（含场景包管理区块）
-- 部署：`deploy/{gcp-backend.service, nginx-gcp.conf, pull-and-restart.sh}`（**同步脚本已强化**）
+- 部署：`deploy/{gcp-backend.service, nginx-gcp.conf, pull-and-restart.sh, **server-one-shot-sync.sh**}`（服务器**一键同步**见运维指南「一键同步」节）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
 接下来按技术方案 §9 推进 **M2** 及以后阶段。
