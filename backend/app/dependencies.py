@@ -71,3 +71,33 @@ def get_framework_job_service() -> FrameworkJobService:
         analysis_repo=AnalysisRepo(pr.data_dir),
         llm_client=LlmClient(settings),
     )
+
+
+def get_world_job_service() -> "WorldJobService":
+    """World Job（M4）。"""
+    from app.services.world_job_service import WorldJobService
+
+    pr = get_package_repo()
+    settings = get_settings()
+    return WorldJobService(
+        package_repo=pr,
+        job_repo=JobRepo(pr.data_dir),
+        framework_repo=FrameworkRepo(pr.data_dir),
+        roster_repo=RosterRepo(pr.data_dir),
+        analysis_repo=AnalysisRepo(pr.data_dir),
+        llm_client=LlmClient(settings),
+    )
+
+
+def get_job_query_service() -> "JobQueryService":
+    from app.services.job_query_service import JobQueryService
+
+    pr = get_package_repo()
+    return JobQueryService(job_repo=JobRepo(pr.data_dir))
+
+
+def get_job_control_service() -> "JobControlService":
+    from app.services.job_control_service import JobControlService
+
+    pr = get_package_repo()
+    return JobControlService(package_repo=pr, job_repo=JobRepo(pr.data_dir))

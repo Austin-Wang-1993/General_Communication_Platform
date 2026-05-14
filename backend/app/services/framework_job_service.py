@@ -9,20 +9,13 @@ from app.clients.llm_client import LlmClient
 from app.errors import (
     ActiveJobConflictError,
     GcpError,
-    JobNotFoundError,
     LifecyclePhaseError,
     LlmFailureError,
     ScenarioNotFoundError,
 )
 from app.lib.clock import utc_now_rfc3339
 from app.lib.ids import new_job_id
-from app.models.creation_jobs import (
-    JobPollResponse,
-    JobRecord,
-    JobStatus,
-    JobType,
-    StartFrameworkJobResponse,
-)
+from app.models.creation_jobs import JobRecord, JobStatus, JobType, StartFrameworkJobResponse
 from app.models.enums import LifecyclePhase
 from app.models.story_assets import CharacterRosterFile, StoryFrameworkFile
 from app.repositories.analysis_repo import AnalysisRepo
@@ -114,12 +107,6 @@ class FrameworkJobService:
             created_at=now,
         )
 
-    async def get_job(self, scenario_id: str, job_id: str) -> JobPollResponse:
-        rec = await self.job_repo.load(scenario_id, job_id)
-        if rec is None or rec.scenario_id != scenario_id:
-            raise JobNotFoundError(details={"scenario_id": scenario_id, "job_id": job_id})
-        return JobPollResponse.model_validate(rec.model_dump(mode="json"))
-
     async def run_framework_pipeline(self, scenario_id: str, job_id: str) -> None:
         try:
             await self._execute_framework_job(scenario_id, job_id)
@@ -145,6 +132,8 @@ class FrameworkJobService:
         now = utc_now_rfc3339()
         j = await self.job_repo.load(scenario_id, job_id)
         if j:
+            if j.status == JobStatus.CANCELED:
+                return
             j = j.model_copy(
                 update={
                     "status": JobStatus.FAILED,
@@ -169,6 +158,10 @@ class FrameworkJobService:
             return
         j = j.model_copy(update={"current_step_label": label, "updated_at": utc_now_rfc3339()})
         await self.job_repo.save(j)
+
+    async def _job_still_running(self, scenario_id: str, job_id: str) -> bool:
+        j = await self.job_repo.load(scenario_id, job_id)
+        return j is not None and j.status == JobStatus.RUNNING
 
     async def _execute_framework_job(self, scenario_id: str, job_id: str) -> None:
         intake = await self.intake_repo.load(scenario_id)
@@ -205,6 +198,9 @@ class FrameworkJobService:
 
         await self.framework_repo.save(scenario_id, fw.model_dump(mode="json"))
 
+        if not await self._job_still_running(scenario_id, job_id):
+            return
+
         await self._touch_job_label(scenario_id, job_id, STEP_LABEL_ROSTER)
 
         roster_bundle = dict(bundle)
@@ -230,18 +226,19 @@ class FrameworkJobService:
 
         now = utc_now_rfc3339()
         j = await self.job_repo.load(scenario_id, job_id)
-        if j is not None:
-            j = j.model_copy(
-                update={
-                    "status": JobStatus.SUCCEEDED,
-                    "finished_at": now,
-                    "updated_at": now,
-                    "current_step_label": "完成",
-                    "error_code": None,
-                    "error_message": None,
-                }
-            )
-            await self.job_repo.save(j)
+        if j is None or j.status != JobStatus.RUNNING:
+            return
+        j = j.model_copy(
+            update={
+                "status": JobStatus.SUCCEEDED,
+                "finished_at": now,
+                "updated_at": now,
+                "current_step_label": "完成",
+                "error_code": None,
+                "error_message": None,
+            }
+        )
+        await self.job_repo.save(j)
 
         async with get_scenario_lock(scenario_id):
             pkg = await self.package_repo.load(scenario_id)

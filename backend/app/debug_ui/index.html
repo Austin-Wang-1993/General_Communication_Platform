@@ -280,10 +280,21 @@
         </section>
 
         <section class="card">
-            <h2>⑤ 全书小节扩写 Job <span class="tag">M4（待实现）</span></h2>
-            <p class="placeholder">
-                M4 阶段开通：触发 world job → 轮询 <code>progress_hint</code> → 查看每节 <code>narrative.json</code> / <code>mission.json</code>。
+            <h2>⑤ 全书小节扩写 Job <span class="tag">M4 / API §3.2~§3.4</span></h2>
+            <p style="font-size:13px;color:var(--text-soft);margin:0 0 12px;">
+                需已有 <code>framework.json</code> + <code>roster.json</code>（先完成 ④）。若包已进入 <code>creation_succeeded</code> 或已有小节文件，请勾选「强制重生成」。
+                轮询约每 1.2s 一次；取消会清空 <code>sections/</code>。
             </p>
+            <div class="toolbar">
+                <button id="btn-world-job" type="button">启动 world Job</button>
+                <button id="btn-world-cancel" type="button" class="btn-danger" disabled>取消当前 world Job</button>
+            </div>
+            <div class="field-row">
+                <input type="checkbox" id="in-world-force" />
+                <label for="in-world-force" style="margin:0;">force_regenerate（已有小节或已完成创作时必选）</label>
+            </div>
+            <div class="split-title">最近一次 world Job 轮询结果</div>
+            <pre class="output" id="out-world"><span class="placeholder">启动后显示 POST 202 与 GET 轮询 JSON</span></pre>
         </section>
 
         <section class="card">

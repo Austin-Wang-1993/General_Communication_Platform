@@ -20,7 +20,8 @@ from app.models.package import (
     PackageSummary,
     ScenarioPackage,
 )
-from app.repositories.base import get_scenario_lock, release_scenario_lock
+from app.models.story_assets import StoryFrameworkFile
+from app.repositories.base import get_scenario_lock, read_json, release_scenario_lock
 from app.repositories.package_repo import PackageRepo
 
 
@@ -95,16 +96,38 @@ class ScenarioPackageService:
 
         M2：`has_intake_snapshot` / `has_scenario_analysis` 在 commit-intake 后为 True。
         M3：`has_story_framework` / `has_character_roster` 在 framework Job 成功后为 True。
-        section_assets_count / section_assets_complete 由 M4 接入。
+        M4：按 framework 小节数统计已落盘 narrative+mission 的节数。
         """
+        section_count, section_complete = await self._section_asset_status(scenario_id)
         return PackageAssets(
             has_intake_snapshot=await self.repo.asset_exists(scenario_id, "intake.json"),
             has_scenario_analysis=await self.repo.asset_exists(scenario_id, "analysis.json"),
             has_story_framework=await self.repo.asset_exists(scenario_id, "framework.json"),
             has_character_roster=await self.repo.asset_exists(scenario_id, "roster.json"),
-            section_assets_count=0,  # M4 实现：扫描 sections/ 子目录
-            section_assets_complete=False,
+            section_assets_count=section_count,
+            section_assets_complete=section_complete,
         )
+
+    async def _section_asset_status(self, scenario_id: str) -> tuple[int, bool]:
+        fw_path = self.repo.package_dir(scenario_id) / "framework.json"
+        raw = await read_json(fw_path)
+        if not isinstance(raw, dict):
+            return 0, False
+        try:
+            sf = StoryFrameworkFile.model_validate(raw)
+        except Exception:
+            return 0, False
+        root = self.repo.package_dir(scenario_id) / "sections"
+        total = sum(len(ch.sections) for ch in sf.story_framework.chapters)
+        if total == 0:
+            return 0, False
+        done = 0
+        for ch in sf.story_framework.chapters:
+            for sec in ch.sections:
+                d = root / f"ch{ch.chapter_id}_sec{sec.section_id}"
+                if (d / "narrative.json").exists() and (d / "mission.json").exists():
+                    done += 1
+        return done, done == total
 
     # === DELETE /scenario-packages/{id}：物理删除 ===
 

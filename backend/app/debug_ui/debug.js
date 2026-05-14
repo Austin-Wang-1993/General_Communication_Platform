@@ -293,6 +293,100 @@
     });
   }
 
+  // === M4：world Job + cancel ===
+  const btnWorld = document.getElementById('btn-world-job');
+  const btnWorldCancel = document.getElementById('btn-world-cancel');
+  const outWorld = document.getElementById('out-world');
+  const inWorldForce = document.getElementById('in-world-force');
+  let lastWorldJobId = null;
+  let worldPollTimer = null;
+
+  function stopWorldPoll() {
+    if (worldPollTimer) {
+      clearInterval(worldPollTimer);
+      worldPollTimer = null;
+    }
+  }
+
+  function syncWorldCancelBtn() {
+    if (btnWorldCancel) {
+      btnWorldCancel.disabled = !lastWorldJobId;
+    }
+  }
+
+  if (btnWorld && outWorld) {
+    btnWorld.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      stopWorldPoll();
+      lastWorldJobId = null;
+      syncWorldCancelBtn();
+      btnWorld.disabled = true;
+      outWorld.innerHTML = '<span class="placeholder">启动 world Job 中…</span>';
+      try {
+        const body = {
+          force_regenerate: !!(inWorldForce && inWorldForce.checked),
+        };
+        const result = await apiCall('POST', `/scenario-packages/${selectedId}/jobs/world`, body);
+        renderResult(rawOut, result);
+        renderResult(outWorld, result);
+        if (result.ok && result.payload && result.payload.job_id) {
+          lastWorldJobId = result.payload.job_id;
+          syncWorldCancelBtn();
+          worldPollTimer = setInterval(async () => {
+            if (!selectedId || !lastWorldJobId) return;
+            const r = await apiCall(
+              'GET',
+              `/scenario-packages/${selectedId}/jobs/${lastWorldJobId}`,
+            );
+            renderResult(rawOut, r);
+            renderResult(outWorld, r);
+            if (r.ok && r.payload && ['succeeded', 'failed', 'canceled'].includes(r.payload.status)) {
+              stopWorldPoll();
+              await refreshList(true);
+              const titleEl = document.querySelector('#package-list li.selected .pkg-title');
+              const t = titleEl ? titleEl.textContent : '';
+              await loadDetail(selectedId, t);
+            }
+          }, 1200);
+        }
+      } finally {
+        btnWorld.disabled = false;
+      }
+    });
+  }
+
+  if (btnWorldCancel && rawOut) {
+    btnWorldCancel.addEventListener('click', async () => {
+      if (!selectedId || !lastWorldJobId) {
+        alert('请先启动 world Job 以获取 job_id');
+        return;
+      }
+      btnWorldCancel.disabled = true;
+      try {
+        const result = await apiCall(
+          'POST',
+          `/scenario-packages/${selectedId}/jobs/${lastWorldJobId}/cancel`,
+        );
+        renderResult(rawOut, result);
+        if (outWorld) renderResult(outWorld, result);
+        stopWorldPoll();
+        if (result.ok) {
+          lastWorldJobId = null;
+          syncWorldCancelBtn();
+          await refreshList(true);
+          const titleEl = document.querySelector('#package-list li.selected .pkg-title');
+          const t = titleEl ? titleEl.textContent : '';
+          await loadDetail(selectedId, t);
+        }
+      } finally {
+        syncWorldCancelBtn();
+      }
+    });
+  }
+
   // 暴露给后续阶段扩展使用
   window.GcpDebug = { apiCall, renderResult, refreshList };
 })();

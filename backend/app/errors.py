@@ -129,6 +129,18 @@ class ActiveJobConflictError(GcpError):
     message = "该场景包已有进行中的创作任务，请等待结束或取消后再试"
 
 
+class SectionsAlreadyExistError(GcpError):
+    http_status = 409
+    error_code = "sections_already_exist"
+    message = "包内已有小节产物或已进入创作完成态；需设置 force_regenerate=true 以清空并重生成"
+
+
+class JobAlreadyTerminalError(GcpError):
+    http_status = 409
+    error_code = "job_already_terminal"
+    message = "该 Job 已结束，无法取消"
+
+
 class LlmAuthenticationError(GcpError):
     """DeepSeek 返回 401/403：多为 API Key 错误、过期或环境变量含多余空白。"""
 

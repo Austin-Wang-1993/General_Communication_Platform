@@ -1,7 +1,7 @@
 """FastAPI 应用入口。
 
 按 `docs/engineering/02-代码架构与目录约定.md` §2.7 后端目录全图组织。
-M0~M3：health、场景包 CRUD、commit-intake、framework Job + 轮询。
+M0~M4：health、场景包 CRUD、commit-intake、framework/world Job、轮询与取消。
 """
 
 from __future__ import annotations
