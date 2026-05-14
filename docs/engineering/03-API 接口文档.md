@@ -74,6 +74,7 @@
 | 404 | `job_not_found` | `job_id` 不存在或属于其他包 | Job 接口 |
 | 409 | `lifecycle_phase_invalid` | 当前 `lifecycle_phase` 不允许该操作 | 几乎所有接口 |
 | 409 | `framework_already_exists` | 包内已有 framework；如需重置必须传 `force_reset_creation=true` | commit-intake |
+| 409 | `sections_already_exist` | 包内已有部分小节产物；如需重生成必须传 `force_regenerate=true` | jobs/world |
 | 409 | `runtime_not_awaiting_user` | 当前不在等待用户回复状态，不能发提示 | hints |
 | 409 | `section_already_has_turns` | 小节已有 turn，自动开场幂等返回 | auto-opener |
 | 409 | `section_no_turns_yet` | 小节尚无任何回合，无法触发本节复盘 | analytics |
@@ -399,8 +400,8 @@
 
 **前置条件**：
 
-- `lifecycle_phase === "intake_committed"`；或 `creation_failed` 且历史 Job 已 terminal。
-- 同包**不得**有未结束的 framework job。
+- `lifecycle_phase ∈ { intake_committed, creation_failed }`（与 PRD §5.4 v0.5.2 `intake_committed` 语义对齐：该状态**允许**已有 framework/roster——例如 framework job 上次成功后回到 `intake_committed`、再次调用本接口表示"重生成 framework + roster"，**直接覆盖**已有 framework.json / roster.json；若用户在 P2.1 改了五字段，应走 `commit-intake` + `force_reset_creation=true` 而不是本接口）；
+- 同包**不得**有未结束（`status ∈ {queued, running}`）的 framework / world job。
 
 **请求体**：可为空 `{}`。
 
@@ -440,8 +441,9 @@
 **前置条件**：
 
 - 包内已有 `framework.json` 与 `roster.json`；
-- `lifecycle_phase ∈ { intake_committed, creation_running, creation_failed, creation_succeeded }`（允许重生成，进入时会先清空已有 `sections/*`，等同 G4 内部逻辑——**注意**：与 P2.4 取消逻辑共用清库实现）；
-- 同包**不得**有未结束的 world job。
+- `lifecycle_phase ∈ { intake_committed, creation_failed, creation_succeeded }`（**不**含 `creation_running`——若已有 Job 在跑必须先取消）；
+- 同包**不得**有未结束的 framework / world job；
+- 若 `lifecycle_phase === "creation_succeeded"` 或包内已有部分 `sections/*` 产物，**必须**传 `force_regenerate=true`，后端原子清空已有 `sections/*` 再重生成（等同 G4 清库行为）；不传则返回 409 `sections_already_exist`。
 
 **请求体**：
 
@@ -1091,4 +1093,5 @@ PRD §6.6.3 字段一一映射：
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v0.1.1 | 2026-05-14 | **交叉审阅修复**：① §3.1 `POST /jobs/framework` 前置条件细化：明确允许 `intake_committed` 状态下已有 framework 的"重生成"语义，与 PRD v0.5.2 §5.4 `intake_committed` 扩充语义对齐；② §3.2 `POST /jobs/world` 前置条件改为"已有 sections 时必须 `force_regenerate=true`"，去掉允许 `creation_running` 的歧义；③ §0.8 错误码总表加 `sections_already_exist`（HTTP 409） |
 | v0.1.0 | 2026-05-14 | 初稿：全部接口完整契约（请求/响应/错误码/PRD 映射/前端故事追溯） |
