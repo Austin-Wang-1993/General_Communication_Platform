@@ -14,8 +14,12 @@ from functools import lru_cache
 from app.clients.llm_client import LlmClient
 from app.config import Settings, get_settings
 from app.repositories.analysis_repo import AnalysisRepo
+from app.repositories.framework_repo import FrameworkRepo
 from app.repositories.intake_repo import IntakeRepo
+from app.repositories.job_repo import JobRepo
 from app.repositories.package_repo import PackageRepo
+from app.repositories.roster_repo import RosterRepo
+from app.services.framework_job_service import FrameworkJobService
 from app.services.intake_service import IntakeService
 from app.services.scenario_package_service import ScenarioPackageService
 
@@ -48,6 +52,21 @@ def get_intake_service() -> IntakeService:
     settings = get_settings()
     return IntakeService(
         package_repo=pr,
+        intake_repo=IntakeRepo(pr.data_dir),
+        analysis_repo=AnalysisRepo(pr.data_dir),
+        llm_client=LlmClient(settings),
+    )
+
+
+def get_framework_job_service() -> FrameworkJobService:
+    """Framework + roster 异步 Job（M3）。"""
+    pr = get_package_repo()
+    settings = get_settings()
+    return FrameworkJobService(
+        package_repo=pr,
+        job_repo=JobRepo(pr.data_dir),
+        framework_repo=FrameworkRepo(pr.data_dir),
+        roster_repo=RosterRepo(pr.data_dir),
         intake_repo=IntakeRepo(pr.data_dir),
         analysis_repo=AnalysisRepo(pr.data_dir),
         llm_client=LlmClient(settings),

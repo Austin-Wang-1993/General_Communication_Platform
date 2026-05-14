@@ -76,7 +76,7 @@ def test_get_existing_returns_summary_with_assets(app_client: TestClient, temp_d
     assert body["current_chapter_id"] is None
     assert body["current_section_id"] is None
     assert body["runtime_awaiting_user"] is None
-    # assets：M1 阶段全为 false / 0
+    # assets：draft 空包尚无产物
     assert body["assets"] == {
         "has_intake_snapshot": False,
         "has_scenario_analysis": False,

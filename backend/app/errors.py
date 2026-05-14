@@ -117,6 +117,18 @@ class LlmTimeoutError(GcpError):
     message = "语言模型响应超时，请稍后重试"
 
 
+class JobNotFoundError(GcpError):
+    http_status = 404
+    error_code = "job_not_found"
+    message = "Job 不存在或不属于该场景包"
+
+
+class ActiveJobConflictError(GcpError):
+    http_status = 409
+    error_code = "active_job_conflict"
+    message = "该场景包已有进行中的创作任务，请等待结束或取消后再试"
+
+
 class LlmAuthenticationError(GcpError):
     """DeepSeek 返回 401/403：多为 API Key 错误、过期或环境变量含多余空白。"""
 
