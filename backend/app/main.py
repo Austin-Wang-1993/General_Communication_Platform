@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from app import __version__
 from app.config import get_settings
 from app.errors import GcpError, gcp_error_handler, unhandled_exception_handler
-from app.routers import health
+from app.routers import health, scenario_packages
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,8 @@ def create_app() -> FastAPI:
 
     # 路由挂载
     app.include_router(health.router, prefix="/api/v1")
-    # M1+ 在此追加：scenario_packages / creation_jobs / runtime / hints / analytics
+    app.include_router(scenario_packages.router, prefix="/api/v1")
+    # M2+ 在此追加：creation_jobs / runtime / hints / analytics
 
     # 调试页静态资源（同进程下访问 /debug-ui/，Nginx 通过 /debug/ 别名也可指向 backend/app/debug_ui/）
     debug_ui_dir = Path(__file__).parent / "debug_ui"
