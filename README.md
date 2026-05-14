@@ -6,10 +6,15 @@
 
 ## 当前状态
 
-🚧 **项目正在文档与设计阶段**，代码尚未开始。
+🚀 **M0 骨架已就位**（仓库结构 + 健康检查端点 + 前端 Hello 页 + 部署三件套）。
 
-- 仓库 `main` 分支：仅文档与说明
-- 工程化代码（前端 + 后端）按技术方案 §9 的 M0 ~ M9 阶段推进
+- 后端：FastAPI + `/api/v1/health` 端点
+- 前端：Vite + React + TS + Tailwind + P1 欢迎页占位 + 健康检查按钮
+- 调试页：`backend/app/debug_ui/index.html`（单页原生 JS）
+- 部署：`deploy/{gcp-backend.service, nginx-gcp.conf, pull-and-restart.sh}`
+- 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
+
+接下来按技术方案 §9 的 M1 ~ M9 阶段推进。
 
 ---
 
@@ -30,6 +35,12 @@
 | **代码架构与目录约定** | [`docs/engineering/02-代码架构与目录约定.md`](docs/engineering/02-代码架构与目录约定.md) | 代码该写在哪一层？目录长什么样？前后端字段怎么对齐？ |
 | **API 接口文档** | [`docs/engineering/03-API 接口文档.md`](docs/engineering/03-API%20接口文档.md) | 每个 HTTP 接口的方法、路径、请求体、响应体、错误码是什么？ |
 | **业务流程与状态机** | [`docs/engineering/04-业务流程与状态机.md`](docs/engineering/04-业务流程与状态机.md) | 状态如何迁移？§6.6.4 规则怎么执行？自动开场怎么触发？G3/G4 清库范围是什么？ |
+
+### 运维 / 部署
+
+| 文档 | 路径 | 给谁看 |
+|------|------|--------|
+| **腾讯云部署指南** | [`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md) | **你**（产品经理，按文档复制粘贴到 Web Shell） |
 
 ### 阅读顺序建议
 
@@ -67,9 +78,61 @@
 
 > 先用**后端调试页**串通所有接口，再做 C 端前端页面。
 
-| 阶段 | 内容 |
-|------|------|
-| M0 ~ M5 | 后端 + 调试页：场景包 CRUD → 创作向导 → 全书生成 → 聊天 + 自动开场 → R1/R2 |
-| M6 ~ M9 | C 端前端：P1 欢迎页 → P2 列表 → P2.1~P2.5 创作向导 → P3 对话 + P3a 章节切换 |
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| **M0** | 仓库骨架 + 健康检查 + 部署链路 | ✅ 当前 |
+| M1 | 场景包 CRUD | 待开始 |
+| M2 | 五字段录入 + DeepSeek 扩写 | 待开始 |
+| M3 | 框架 + 角色 Job | 待开始 |
+| M4 | 全书小节 Job | 待开始 |
+| M5 | 聊天 + 自动开场 | 待开始 |
+| M5.5 | R1 提示 + R2 复盘 | 待开始 |
+| M6 ~ M9 | C 端前端 P1~P3a 全部页面 | 待开始 |
 
 详见 [技术方案 §9](docs/engineering/01-技术方案.md)。
+
+---
+
+## 仓库结构速览
+
+```
+backend/                后端 FastAPI
+├── app/
+│   ├── main.py         入口
+│   ├── config.py       env 配置
+│   ├── errors.py       异常类
+│   ├── routers/        ① 路由层（M0: health）
+│   ├── services/       ② 业务服务层（M1+）
+│   ├── repositories/   ③ 数据仓库层（M1+）
+│   ├── clients/        ④ 外部客户端层（M2+）
+│   ├── models/         跨层 Pydantic 模型
+│   ├── validators/     业务校验
+│   ├── prompts/        LLM 提示词 Markdown
+│   └── debug_ui/       调试页静态资源
+├── tests/              单元 + 集成测试
+└── requirements.txt
+
+frontend/               前端 React + Vite + TS + Tailwind
+├── src/
+│   ├── main.tsx        入口
+│   ├── App.tsx         路由表
+│   ├── pages/          ① 页面层（M0: WelcomePage）
+│   ├── components/     ② 组件层（M6+）
+│   ├── hooks/          ③ 业务钩子层（M6+）
+│   ├── services/       ④ 服务客户端（M0: apiClient + healthApi）
+│   ├── types/          跨层 TS 类型（M1+）
+│   ├── store/          Zustand UI 状态（M6+）
+│   └── styles/         Tailwind 全局
+├── index.html
+└── package.json
+
+deploy/                 部署脚本
+├── gcp-backend.service systemd 单元
+├── nginx-gcp.conf      Nginx 站点配置
+└── pull-and-restart.sh 一键拉取并重启脚本（支持分支参数）
+
+docs/
+├── product/            产品需求 + 前端需求
+├── engineering/        技术方案 + 架构 + API + 业务流程
+└── operations/         腾讯云部署指南（用户实操手册）
+```
