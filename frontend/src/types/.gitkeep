@@ -1,0 +1,5 @@
+TypeScript 类型层占位目录。M1+ 起按字段与后端 Pydantic 一一对应（snake_case）：
+- enums.ts / package.ts / intake.ts / framework.ts / roster.ts
+- narrative.ts / mission.ts / turn.ts / hint.ts / analytics.ts
+- api-errors.ts
+（与 docs/engineering/02-代码架构与目录约定.md §3.5 一致）

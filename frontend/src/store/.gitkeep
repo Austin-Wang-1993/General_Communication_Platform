@@ -1,0 +1,4 @@
+Zustand 本地 UI 状态占位目录。M6+ 起按 §3.5 填充：
+- chatDraftStore.ts  当前 P3 输入框草稿、当前选中接收人
+- wizardStore.ts     P2.1~P2.5 向导填写中的草稿
+- uiStore.ts         全局 Toast 队列、当前打开的 Modal

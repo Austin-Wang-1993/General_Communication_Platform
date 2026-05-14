@@ -1,0 +1,6 @@
+组件层占位目录。M6+ 起按 docs/engineering/02-代码架构与目录约定.md §3.2 填充：
+- common/   Button / TextField / Toast / LoadingSpinner / Modal
+- scenario/ ScenarioCard / ScenarioOpsSheet (P2a) / DeleteConfirmDialog (P2b)
+- creation/ WizardTabs / ProgressLabel (G10) / IntakeForm (P2.1) / SectionPreview (P2.5)
+- chat/     ChatLayout / ChatMessage / TypingIndicator / RecipientPicker / ChatInputBar
+            BackgroundModal / HintModal / AnalyticsModal / ChapterListModal (P3a)

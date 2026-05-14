@@ -1,0 +1,18 @@
+# 通用英语对话练习 · 后端依赖
+# Python 3.11+
+
+# Web 框架
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# HTTP 客户端（调 DeepSeek 用）
+httpx==0.27.2
+
+# 工具
+python-dotenv==1.0.1
+
+# 测试（开发用，部署时可选）
+pytest==8.3.3
+pytest-asyncio==0.24.0
