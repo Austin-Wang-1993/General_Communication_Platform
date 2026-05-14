@@ -6,17 +6,15 @@
 
 ## 当前状态
 
-🚀 **M0 骨架已落地，在 feature 分支 `cursor/m0-skeleton-a4d3` 上等用户验收后合并 main**。
+**`main` 已合并 M1（场景包 CRUD）与部署脚本加固**；服务器上请用 **`./deploy/pull-and-restart.sh`** 拉 `main` 或指定 feature 分支（脚本会 `checkout -B`、重启后端并做本机健康检查）。详见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)。
 
-> 按双分支工作流（[技术方案 §11.2](docs/engineering/01-技术方案.md)）：feature 分支 → 用户拉取测试 → 合并 main → 拉 main 作基线。**首次部署时 main 只有文档**，需要先 checkout 到 feature 分支拉代码——详见[腾讯云部署指南](docs/operations/01-腾讯云部署指南.md) **步骤 3.5**。
-
-- 后端：FastAPI + `/api/v1/health` 端点
-- 前端：Vite + React + TS + Tailwind + P1 欢迎页占位 + 健康检查按钮
-- 调试页：`backend/app/debug_ui/index.html`（单页原生 JS）
-- 部署：`deploy/{gcp-backend.service, nginx-gcp.conf, pull-and-restart.sh}`
+- 后端：FastAPI + `/api/v1/health` + **`/api/v1/scenario-packages`**（列表 / 新建 / 详情 / 删除）
+- 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
+- 调试页：`backend/app/debug_ui/`（含场景包管理区块）
+- 部署：`deploy/{gcp-backend.service, nginx-gcp.conf, pull-and-restart.sh}`（**同步脚本已强化**）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-接下来按技术方案 §9 的 M1 ~ M9 阶段推进。
+接下来按技术方案 §9 推进 **M2** 及以后阶段。
 
 ---
 
@@ -82,8 +80,8 @@
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| **M0** | 仓库骨架 + 健康检查 + 部署链路 | ✅ 当前 |
-| M1 | 场景包 CRUD | 待开始 |
+| **M0** | 仓库骨架 + 健康检查 + 部署链路 | ✅ 已合并 main |
+| **M1** | 场景包 CRUD | ✅ 已合并 main |
 | M2 | 五字段录入 + DeepSeek 扩写 | 待开始 |
 | M3 | 框架 + 角色 Job | 待开始 |
 | M4 | 全书小节 Job | 待开始 |
