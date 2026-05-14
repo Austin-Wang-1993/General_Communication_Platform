@@ -241,6 +241,58 @@
     });
   }
 
+  // === M3：framework Job ===
+  const btnFramework = document.getElementById('btn-framework-job');
+  const outFramework = document.getElementById('out-framework');
+  let lastFrameworkJobId = null;
+  let fwPollTimer = null;
+
+  function stopFwPoll() {
+    if (fwPollTimer) {
+      clearInterval(fwPollTimer);
+      fwPollTimer = null;
+    }
+  }
+
+  if (btnFramework && outFramework) {
+    btnFramework.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      stopFwPoll();
+      lastFrameworkJobId = null;
+      btnFramework.disabled = true;
+      outFramework.innerHTML = '<span class="placeholder">启动 Job 中…</span>';
+      try {
+        const result = await apiCall('POST', `/scenario-packages/${selectedId}/jobs/framework`, {});
+        renderResult(rawOut, result);
+        renderResult(outFramework, result);
+        if (result.ok && result.payload && result.payload.job_id) {
+          lastFrameworkJobId = result.payload.job_id;
+          fwPollTimer = setInterval(async () => {
+            if (!selectedId || !lastFrameworkJobId) return;
+            const r = await apiCall(
+              'GET',
+              `/scenario-packages/${selectedId}/jobs/${lastFrameworkJobId}`,
+            );
+            renderResult(rawOut, r);
+            renderResult(outFramework, r);
+            if (r.ok && r.payload && ['succeeded', 'failed', 'canceled'].includes(r.payload.status)) {
+              stopFwPoll();
+              await refreshList(true);
+              const titleEl = document.querySelector('#package-list li.selected .pkg-title');
+              const t = titleEl ? titleEl.textContent : '';
+              await loadDetail(selectedId, t);
+            }
+          }, 1200);
+        }
+      } finally {
+        btnFramework.disabled = false;
+      }
+    });
+  }
+
   // 暴露给后续阶段扩展使用
   window.GcpDebug = { apiCall, renderResult, refreshList };
 })();

@@ -182,7 +182,7 @@ if _gcp_backend_unit_ready; then
     fi
 
     info "OpenAPI 路由探测：${LOCAL_OPENAPI_URL}"
-    if curl -fsS --max-time 15 "${LOCAL_OPENAPI_URL}" 2>/dev/null | grep -qE "scenario-packages|commit-intake"; then
+    if curl -fsS --max-time 15 "${LOCAL_OPENAPI_URL}" 2>/dev/null | grep -qE "scenario-packages|commit-intake|jobs/framework"; then
         ok "OpenAPI 已包含 scenario-packages（M1+ 路由已注册）"
     else
         info "OpenAPI 未出现 scenario-packages（main/M0 属正常；若你期望 M1+ 仍无此项，请核对分支与 commit）"

@@ -94,6 +94,7 @@ class ScenarioPackageService:
         """探测包目录下各产物文件的存在性。
 
         M2：`has_intake_snapshot` / `has_scenario_analysis` 在 commit-intake 后为 True。
+        M3：`has_story_framework` / `has_character_roster` 在 framework Job 成功后为 True。
         section_assets_count / section_assets_complete 由 M4 接入。
         """
         return PackageAssets(

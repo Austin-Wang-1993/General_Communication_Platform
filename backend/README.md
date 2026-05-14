@@ -29,8 +29,8 @@ pytest -q
 ## 当前里程碑
 
 - **M1**：场景包 CRUD（`GET/POST/DELETE /api/v1/scenario-packages`）
-- **M2**：`POST /api/v1/scenario-packages/{id}/commit-intake`（五字段 + `intake.json` / `analysis.json` + DeepSeek）
-- **M3+**：见 `docs/engineering/01-技术方案.md` §9
+- **M3**：`POST .../jobs/framework` + `GET .../jobs/{job_id}`（异步生成 `framework.json` / `roster.json`）
+- **M4+**：见 `docs/engineering/01-技术方案.md` §9
 
 ## 目录速览
 

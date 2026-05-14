@@ -74,6 +74,7 @@
 | 404 | `job_not_found` | `job_id` 不存在或属于其他包 | Job 接口 |
 | 409 | `lifecycle_phase_invalid` | 当前 `lifecycle_phase` 不允许该操作 | 几乎所有接口 |
 | 409 | `framework_already_exists` | 包内已有 framework；如需重置必须传 `force_reset_creation=true` | commit-intake |
+| 409 | `active_job_conflict` | 同包已有 `queued`/`running` 的 framework/world Job | `POST .../jobs/framework` / `POST .../jobs/world` |
 | 409 | `sections_already_exist` | 包内已有部分小节产物；如需重生成必须传 `force_regenerate=true` | jobs/world |
 | 409 | `runtime_not_awaiting_user` | 当前不在等待用户回复状态，不能发提示 | hints |
 | 409 | `section_already_has_turns` | 小节已有 turn，自动开场幂等返回 | auto-opener |
@@ -130,7 +131,7 @@
 {
   "ok": true,
   "service": "gcp-backend",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "server_time": "2026-05-14T08:30:45Z",
   "data_dir_writable": true,
   "deepseek_configured": true
@@ -426,6 +427,7 @@
 |---|---|
 | 404 | `scenario_not_found` |
 | 409 | `lifecycle_phase_invalid` |
+| 409 | `active_job_conflict` |
 | 409 | `job_already_terminal`（语义上不会触发，列举完整） |
 
 **业务行为**：

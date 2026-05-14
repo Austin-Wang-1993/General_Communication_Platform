@@ -10,6 +10,11 @@ def new_scenario_id() -> str:
     return str(uuid.uuid4())
 
 
+def new_job_id() -> str:
+    """生成 Job UUID v4（API 文档 §3 `job_id`）。"""
+    return str(uuid.uuid4())
+
+
 def new_turn_id() -> str:
     """生成 turn UUID v4（PRD §5.2 `turn_id` 规则）；M5 阶段开始使用。"""
     return str(uuid.uuid4())
