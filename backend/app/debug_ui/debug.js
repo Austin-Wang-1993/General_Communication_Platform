@@ -90,6 +90,113 @@
     });
   }
 
+  // === M1：场景包管理 ===
+  const listBtn = document.getElementById('btn-list-packages');
+  const createBtn = document.getElementById('btn-create-package');
+  const deleteBtn = document.getElementById('btn-delete-package');
+  const listEl = document.getElementById('package-list');
+  const detailOut = document.getElementById('out-package');
+  const rawOut = document.getElementById('out-packages-raw');
+  const selectedLabel = document.getElementById('selected-label');
+
+  let selectedId = null;
+
+  function setSelected(id, title) {
+    selectedId = id;
+    deleteBtn.disabled = !id;
+    selectedLabel.textContent = id ? `· ${id.slice(0, 8)}… ${title ? '(' + title + ')' : ''}` : '（未选中）';
+    document.querySelectorAll('#package-list li').forEach((li) => {
+      li.classList.toggle('selected', li.dataset.id === id);
+    });
+  }
+
+  async function refreshList(preserveSelected = false) {
+    listEl.innerHTML = '<li class="placeholder">加载中…</li>';
+    const result = await apiCall('GET', '/scenario-packages');
+    renderResult(rawOut, result);
+    if (!result.ok) {
+      listEl.innerHTML = '<li class="placeholder">加载失败，看下方原始响应</li>';
+      return;
+    }
+    const packages = (result.payload && result.payload.packages) || [];
+    if (packages.length === 0) {
+      listEl.innerHTML = '<li class="placeholder">无场景包；点"新建空包"创建一个</li>';
+      setSelected(null, null);
+      detailOut.innerHTML = '<span class="placeholder">在左侧点选某个场景包查看其 package.json</span>';
+      return;
+    }
+    listEl.innerHTML = '';
+    let stillSelected = false;
+    for (const p of packages) {
+      const li = document.createElement('li');
+      li.dataset.id = p.scenario_id;
+      const title = p.scenario_title || '(空标题)';
+      li.innerHTML =
+        `<div class="pkg-title">${escapeHtml(title)}</div>` +
+        `<div class="pkg-meta">${escapeHtml(p.scenario_id.slice(0, 8))}… · ${escapeHtml(p.lifecycle_phase)} · ${escapeHtml(p.updated_at)}</div>`;
+      li.addEventListener('click', () => loadDetail(p.scenario_id, title));
+      listEl.appendChild(li);
+      if (preserveSelected && p.scenario_id === selectedId) stillSelected = true;
+    }
+    if (!preserveSelected || !stillSelected) {
+      setSelected(null, null);
+      detailOut.innerHTML = '<span class="placeholder">在左侧点选某个场景包查看其 package.json</span>';
+    }
+  }
+
+  async function loadDetail(id, title) {
+    setSelected(id, title);
+    detailOut.innerHTML = '<span class="placeholder">请求中…</span>';
+    const result = await apiCall('GET', `/scenario-packages/${id}`);
+    renderResult(rawOut, result);
+    if (!result.ok) {
+      detailOut.innerHTML = `<span class="status-err">加载失败</span>\n${escapeHtml(JSON.stringify(result.payload, null, 2))}`;
+      return;
+    }
+    detailOut.textContent = JSON.stringify(result.payload, null, 2);
+  }
+
+  async function createPackage() {
+    createBtn.disabled = true;
+    try {
+      const result = await apiCall('POST', '/scenario-packages', {});
+      renderResult(rawOut, result);
+      if (!result.ok) return;
+      await refreshList(false);
+      // 自动选中新建的那个
+      if (result.payload && result.payload.scenario_id) {
+        await loadDetail(result.payload.scenario_id, result.payload.scenario_title || '(空标题)');
+      }
+    } finally {
+      createBtn.disabled = false;
+    }
+  }
+
+  async function deleteSelected() {
+    if (!selectedId) return;
+    if (!confirm(`确认删除场景包 ${selectedId.slice(0, 8)}… ？此操作不可恢复。`)) return;
+    deleteBtn.disabled = true;
+    try {
+      const result = await apiCall('DELETE', `/scenario-packages/${selectedId}`);
+      renderResult(rawOut, result);
+      if (!result.ok) return;
+      setSelected(null, null);
+      detailOut.innerHTML = '<span class="placeholder">已删除；刷新列表</span>';
+      await refreshList(false);
+    } finally {
+      deleteBtn.disabled = false;
+    }
+  }
+
+  if (listBtn) listBtn.addEventListener('click', () => refreshList(true));
+  if (createBtn) createBtn.addEventListener('click', createPackage);
+  if (deleteBtn) deleteBtn.addEventListener('click', deleteSelected);
+
+  // 页面加载完自动拉一次列表
+  if (listEl) {
+    refreshList(false);
+  }
+
   // 暴露给后续阶段扩展使用
-  window.GcpDebug = { apiCall, renderResult };
+  window.GcpDebug = { apiCall, renderResult, refreshList };
 })();

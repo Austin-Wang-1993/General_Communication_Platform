@@ -82,6 +82,74 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        button.btn-danger {
+            background: var(--err);
+        }
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .split {
+            display: grid;
+            grid-template-columns: minmax(220px, 1fr) minmax(280px, 2fr);
+            gap: 12px;
+        }
+        @media (max-width: 720px) {
+            .split { grid-template-columns: 1fr; }
+        }
+        .split-left, .split-right {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            background: #fbf7ee;
+        }
+        .split-title {
+            font-size: 12px;
+            color: var(--text-soft);
+            margin-bottom: 6px;
+        }
+        ul.package-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        ul.package-list li {
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            border: 1px solid transparent;
+            margin-bottom: 4px;
+        }
+        ul.package-list li:hover {
+            background: #f1eada;
+        }
+        ul.package-list li.selected {
+            background: #fee9d3;
+            border-color: var(--accent);
+        }
+        ul.package-list li .pkg-title {
+            font-weight: 600;
+        }
+        ul.package-list li .pkg-meta {
+            font-size: 11px;
+            color: var(--text-soft);
+            margin-top: 2px;
+            font-family: var(--mono);
+        }
+        details.raw-toggle {
+            margin-top: 12px;
+        }
+        details.raw-toggle summary {
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-soft);
+            user-select: none;
+        }
         pre.output {
             margin-top: 12px;
             padding: 12px;
@@ -127,13 +195,30 @@
             <pre class="output" id="out-health"><span class="placeholder">点击上方按钮调用 GET /api/v1/health</span></pre>
         </section>
 
-        <!-- M1+ 占位 -->
+        <!-- M1: 场景包管理 -->
         <section class="card">
-            <h2>② 场景包管理 <span class="tag">M1（待实现）</span></h2>
-            <p class="placeholder">
-                M1 阶段开通：场景包列表、新建空包、删除场景包。<br>
-                对应 API 文档 §2.1 ~ §2.5。
-            </p>
+            <h2>② 场景包管理 <span class="tag">M1 / API §2.1~§2.4</span></h2>
+            <div class="toolbar">
+                <button id="btn-list-packages">刷新列表</button>
+                <button id="btn-create-package">新建空包</button>
+                <button id="btn-delete-package" class="btn-danger" disabled>删除选中</button>
+            </div>
+            <div class="split">
+                <div class="split-left">
+                    <div class="split-title">场景包列表（按更新时间倒序）</div>
+                    <ul id="package-list" class="package-list">
+                        <li class="placeholder">点"刷新列表"加载</li>
+                    </ul>
+                </div>
+                <div class="split-right">
+                    <div class="split-title">选中包详情 <span id="selected-label" class="placeholder">（未选中）</span></div>
+                    <pre class="output" id="out-package"><span class="placeholder">在左侧点选某个场景包查看其 package.json</span></pre>
+                </div>
+            </div>
+            <details class="raw-toggle">
+                <summary>最近 API 响应（原始 JSON）</summary>
+                <pre class="output" id="out-packages-raw"><span class="placeholder">每次接口调用会更新此区</span></pre>
+            </details>
         </section>
 
         <section class="card">
