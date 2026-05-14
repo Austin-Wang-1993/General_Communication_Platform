@@ -96,6 +96,12 @@ if systemctl list-unit-files | grep -q '^gcp-backend.service'; then
     sleep 1
     if systemctl is-active --quiet gcp-backend; then
         ok "gcp-backend 已运行"
+        # 自检：M1+ 应在 OpenAPI 中出现 scenario-packages；若缺失多为仍跑旧代码或未 reload 进程
+        if curl -fsS --max-time 5 "http://127.0.0.1:8000/openapi.json" 2>/dev/null | grep -q "scenario-packages"; then
+            ok "OpenAPI 已包含 scenario-packages（M1 路由已加载）"
+        else
+            warn "OpenAPI 中未找到 scenario-packages — 若你期望 M1，请核对：① git 是否在含 M1 的分支 ② journalctl -u gcp-backend 是否有 ImportError"
+        fi
     else
         err "gcp-backend 启动失败！查看：sudo journalctl -u gcp-backend -n 50"
         exit 1

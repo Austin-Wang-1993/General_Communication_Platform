@@ -28,8 +28,8 @@ pytest -q
 
 ## 当前里程碑
 
-- **M0**（当前）：仓库骨架 + `/api/v1/health` 端点
-- **M1+**：见 `docs/engineering/01-技术方案.md` §9
+- **M1**：场景包 CRUD（`GET/POST/DELETE /api/v1/scenario-packages`）
+- **M2+**：见 `docs/engineering/01-技术方案.md` §9
 
 ## 目录速览
 
