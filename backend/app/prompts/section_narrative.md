@@ -14,7 +14,7 @@ Shape:
 
 Rules:
 - Do **not** nest under `section_narrative` or any wrapper; the HTTP parser expects the five keys at the root.
-- `appearing_npc_ids` length MUST be 1 or 2; NEVER include `"user"`.
+- `appearing_npc_ids` length MUST be **1 or 2** (never more); NEVER include `"user"`.
 - Each id MUST equal `character_id` of some NPC in `character_roster.characters` where `is_user` is false (copy ids **verbatim**, same spelling/case).
 - `section_body` must describe **this** section only, aligned with `framework_section`, `enriched_scene_description`, `normalized_vocabulary`, and roster personalities.
 

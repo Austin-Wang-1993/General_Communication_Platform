@@ -131,7 +131,7 @@
 {
   "ok": true,
   "service": "gcp-backend",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "server_time": "2026-05-14T08:30:45Z",
   "data_dir_writable": true,
   "deepseek_configured": true

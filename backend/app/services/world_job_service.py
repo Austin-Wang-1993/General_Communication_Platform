@@ -44,6 +44,11 @@ from app.repositories.roster_repo import RosterRepo
 
 logger = logging.getLogger(__name__)
 
+_NARRATIVE_KEYS = frozenset(
+    {"scenario_id", "chapter_id", "section_id", "section_body", "appearing_npc_ids"}
+)
+_MISSION_KEYS = frozenset({"scenario_id", "chapter_id", "section_id", "section_objective"})
+
 _ALLOWED_WORLD = frozenset(
     {
         LifecyclePhase.INTAKE_COMMITTED,
@@ -439,6 +444,31 @@ class WorldJobService:
         )
 
     @staticmethod
+    def _sanitize_appearing_npc_ids(raw: Any, allowed: set[str]) -> list[str] | None:
+        """PRD：每节 1~2 名 NPC。模型若列出更多，只保留前两个合法且不重复的 id。"""
+        if not isinstance(raw, list):
+            return None
+        out: list[str] = []
+        seen: set[str] = set()
+        for x in raw:
+            tid = str(x).strip()
+            if not tid or tid == "user" or tid not in allowed:
+                continue
+            if tid in seen:
+                continue
+            seen.add(tid)
+            out.append(tid)
+            if len(out) >= 2:
+                break
+        if not out:
+            return None
+        return out
+
+    @staticmethod
+    def _strip_extra_keys(d: dict[str, Any], keep: frozenset[str]) -> dict[str, Any]:
+        return {k: v for k, v in d.items() if k in keep}
+
+    @staticmethod
     def _unwrap_inner_dict(raw: object, inner_keys: tuple[str, ...]) -> dict[str, Any] | None:
         """接受根级扁平 JSON，或误包在 `section_narrative` / `narrative` 等键下的对象。"""
         if not isinstance(raw, dict):
@@ -470,13 +500,15 @@ class WorldJobService:
         d["scenario_id"] = scenario_id
         d["chapter_id"] = chapter_id
         d["section_id"] = section_id
+        d = WorldJobService._strip_extra_keys(d, _NARRATIVE_KEYS)
+        cleaned = WorldJobService._sanitize_appearing_npc_ids(d.get("appearing_npc_ids"), allowed_npc_ids)
+        if cleaned is None:
+            return None, "appearing_npc_ids 为空或无法解析（需至少 1 个 roster 中的 NPC id）"
+        d["appearing_npc_ids"] = cleaned
         try:
             n = SectionNarrativePayload.model_validate(d)
         except ValidationError as e:
             return None, self._format_validation_errors(e)
-        if not set(n.appearing_npc_ids).issubset(allowed_npc_ids):
-            bad = sorted(set(n.appearing_npc_ids) - allowed_npc_ids)
-            return None, f"appearing_npc_ids 含非法 id: {bad}"
         return n, None
 
     def _validate_mission(
@@ -493,6 +525,7 @@ class WorldJobService:
         d["scenario_id"] = scenario_id
         d["chapter_id"] = chapter_id
         d["section_id"] = section_id
+        d = WorldJobService._strip_extra_keys(d, _MISSION_KEYS)
         try:
             m = SectionMissionPayload.model_validate(d)
         except ValidationError as e:
