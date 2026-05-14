@@ -189,6 +189,12 @@ class SectionAlreadyHasTurnsError(GcpError):
     message = "本节已有对话回合，无法再次自动开场"
 
 
+class SectionNoTurnsYetError(GcpError):
+    http_status = 409
+    error_code = "section_no_turns_yet"
+    message = "本节尚无对话回合，无法生成本节复盘"
+
+
 class LlmAuthenticationError(GcpError):
     """DeepSeek 返回 401/403：多为 API Key 错误、过期或环境变量含多余空白。"""
 

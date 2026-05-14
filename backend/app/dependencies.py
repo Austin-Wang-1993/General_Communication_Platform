@@ -135,3 +135,20 @@ def get_hints_service() -> "HintsService":
         hints_repo=HintsRepo(pr.data_dir),
         llm_client=LlmClient(settings),
     )
+
+
+def get_section_analytics_service() -> "SectionAnalyticsService":
+    from app.repositories.section_analytics_repo import SectionAnalyticsRepo
+    from app.repositories.turns_repo import TurnsRepo
+    from app.services.section_analytics_service import SectionAnalyticsService
+
+    pr = get_package_repo()
+    settings = get_settings()
+    return SectionAnalyticsService(
+        package_repo=pr,
+        framework_repo=FrameworkRepo(pr.data_dir),
+        roster_repo=RosterRepo(pr.data_dir),
+        turns_repo=TurnsRepo(pr.data_dir),
+        analytics_repo=SectionAnalyticsRepo(pr.data_dir),
+        llm_client=LlmClient(settings),
+    )

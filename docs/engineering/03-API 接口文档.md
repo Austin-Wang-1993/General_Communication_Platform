@@ -1,6 +1,6 @@
 # API 接口文档
 
-> **文档版本**：v0.1.4  
+> **文档版本**：v0.1.5  
 > **更新时间**：2026-05-14  
 > **关联**：`../product/01-产品需求文档.md`、`../product/02-前端需求文档.md`、`01-技术方案.md`、`02-代码架构与目录约定.md`  
 > **本文是什么**：HTTP 接口的**完整契约**——每个接口的方法、路径、请求体、响应体、错误码、前置条件、PRD 字段映射、示例。  
@@ -131,7 +131,7 @@
 {
   "ok": true,
   "service": "gcp-backend",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "server_time": "2026-05-14T08:30:45Z",
   "data_dir_writable": true,
   "deepseek_configured": true

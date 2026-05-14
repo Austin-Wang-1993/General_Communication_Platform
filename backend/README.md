@@ -32,7 +32,7 @@ pytest -q
 - **M2**：`POST .../commit-intake`（五字段 + `intake.json` / `analysis.json`）
 - **M3**：`POST .../jobs/framework` + `GET .../jobs/{job_id}`（异步生成 `framework.json` / `roster.json`）
 - **M4**：`POST .../jobs/world` + `POST .../jobs/{job_id}/cancel`（`sections/ch*_sec*/` 小节资产）
-- **M5（进行中）**：运行期主链 + **`POST/GET .../hints`**（R1）；**待续**：§6.6.4 全量链、复盘 `analytics` 等
+- **M5（进行中）**：运行期 + R1 hints + **R2 本节复盘 `analytics`**（本分支）；**待续**：§6.6.4 等
 
 ## 目录速览
 
