@@ -93,8 +93,7 @@ class ScenarioPackageService:
     async def _compute_assets(self, scenario_id: str) -> PackageAssets:
         """探测包目录下各产物文件的存在性。
 
-        M1：只有 `package.json` 自身存在，其他全部 False。
-        M2+ 各 service 实现后，此处对应字段自然变 True。
+        M2：`has_intake_snapshot` / `has_scenario_analysis` 在 commit-intake 后为 True。
         section_assets_count / section_assets_complete 由 M4 接入。
         """
         return PackageAssets(

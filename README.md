@@ -8,13 +8,13 @@
 
 **`main` 已合并 M1（场景包 CRUD）与部署脚本加固**；服务器上请用 **`./deploy/pull-and-restart.sh`** 拉 `main` 或指定 feature 分支（脚本会 `checkout -B`、重启后端并做本机健康检查）。详见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)。
 
-- 后端：FastAPI + `/api/v1/health` + **`/api/v1/scenario-packages`**（列表 / 新建 / 详情 / 删除）
+- 后端：FastAPI + `/api/v1/health` + **`/api/v1/scenario-packages`**（列表 / 新建 / 详情 / 删除）+ **`POST .../commit-intake`**（M2，本 feature 分支）
 - 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
-- 调试页：`backend/app/debug_ui/`（含场景包管理区块）
+- 调试页：`backend/app/debug_ui/`（含场景包管理 + 五字段提交区块）
 - 部署：`deploy/{gcp-backend.service, nginx-gcp.conf, pull-and-restart.sh, **server-one-shot-sync.sh**}`（服务器**一键同步**见运维指南「一键同步」节）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-接下来按技术方案 §9 推进 **M2** 及以后阶段。
+**M2**（五字段 `commit-intake` + DeepSeek 扩写）在本仓库当前开发分支实现；合并 `main` 后健康检查中的 `version` 将反映当前后端发布号（如 **0.3.1**）。接下来按技术方案 §9 推进 **M3** 及以后阶段。
 
 ---
 
@@ -82,7 +82,7 @@
 |------|------|------|
 | **M0** | 仓库骨架 + 健康检查 + 部署链路 | ✅ 已合并 main |
 | **M1** | 场景包 CRUD | ✅ 已合并 main |
-| M2 | 五字段录入 + DeepSeek 扩写 | 待开始 |
+| M2 | 五字段录入 + DeepSeek 扩写 | ✅ 本分支（待合并 main） |
 | M3 | 框架 + 角色 Job | 待开始 |
 | M4 | 全书小节 Job | 待开始 |
 | M5 | 聊天 + 自动开场 | 待开始 |

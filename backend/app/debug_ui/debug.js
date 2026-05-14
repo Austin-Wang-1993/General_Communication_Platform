@@ -197,6 +197,50 @@
     refreshList(false);
   }
 
+  // === M2：五字段 commit-intake ===
+  const commitBtn = document.getElementById('btn-commit-intake');
+  const outIntake = document.getElementById('out-intake');
+  const inScenarioTitle = document.getElementById('in-scenario-title');
+  const inDisplayName = document.getElementById('in-display-name');
+  const inSceneBrief = document.getElementById('in-scene-brief');
+  const inGoalBrief = document.getElementById('in-goal-brief');
+  const inVocab = document.getElementById('in-vocab');
+  const inForceReset = document.getElementById('in-force-reset');
+
+  if (commitBtn && outIntake) {
+    commitBtn.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const body = {
+        scenario_title: (inScenarioTitle && inScenarioTitle.value) || '',
+        user_display_name: (inDisplayName && inDisplayName.value) || '',
+        scene_brief: (inSceneBrief && inSceneBrief.value) || '',
+        user_goal_brief: (inGoalBrief && inGoalBrief.value) || '',
+        vocabulary_list: (inVocab && inVocab.value) || '',
+        force_reset_creation: !!(inForceReset && inForceReset.checked),
+      };
+      commitBtn.disabled = true;
+      outIntake.innerHTML = '<span class="placeholder">请求中（可能需数十秒）…</span>';
+      try {
+        const result = await apiCall(
+          'POST',
+          `/scenario-packages/${selectedId}/commit-intake`,
+          body,
+        );
+        renderResult(rawOut, result);
+        renderResult(outIntake, result);
+        if (result.ok) {
+          await refreshList(true);
+          await loadDetail(selectedId, body.scenario_title);
+        }
+      } finally {
+        commitBtn.disabled = false;
+      }
+    });
+  }
+
   // 暴露给后续阶段扩展使用
   window.GcpDebug = { apiCall, renderResult, refreshList };
 })();

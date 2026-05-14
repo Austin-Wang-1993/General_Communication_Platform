@@ -88,6 +88,7 @@
 | 422 | `pointer_target_invalid` | enter 目标 `(ch, sec)` 不存在 | enter |
 | 422 | `npc_npc_chain_too_long` | 拟写入回合会让连续 NPC–NPC > 3（§6.6.4 规则 7） | 内部触发，对外通常表现为 NPC 续聊提前返回 |
 | 504 | `llm_timeout` | 单次 LLM 调用超过 120s | 任何同步调 LLM 的接口 |
+| 502 | `llm_authentication_failed` | DeepSeek 拒绝 API Key（上游 401/403） | 任何同步调 LLM 的接口（多为 Key 错误、过期或环境变量含多余空白） |
 | 500 | `llm_failure` | LLM 调用返回错误或输出 schema 不合法且修复重试失败 | 同上 |
 | 500 | `auto_opener_failed` | §6.6.5 自动开场失败 | enter / auto-opener |
 | 500 | `repository_io_error` | JSON 文件读写失败 | 任意接口 |
@@ -129,7 +130,7 @@
 {
   "ok": true,
   "service": "gcp-backend",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "server_time": "2026-05-14T08:30:45Z",
   "data_dir_writable": true,
   "deepseek_configured": true
@@ -143,7 +144,7 @@
 | `version` | string | 后端版本号 |
 | `server_time` | timestamp | 服务器时间，便于排查时差 |
 | `data_dir_writable` | bool | `GCP_DATA_DIR` 是否可写 |
-| `deepseek_configured` | bool | `DEEPSEEK_API_KEY` 环境变量是否非空（**不**校验 Key 有效性，只查是否配置） |
+| `deepseek_configured` | bool | `DEEPSEEK_API_KEY` 是否非空（**不**校验 Key 能否通过 DeepSeek 鉴权；无效 Key 会在首次调用 LLM 时返回 `502` + `llm_authentication_failed`） |
 
 **错误响应**：无业务错误；若整个服务挂掉则连不上。
 
@@ -380,6 +381,7 @@
 | 409 | `framework_already_exists`（包内已有 framework 但未传 `force_reset_creation=true`） |
 | 422 | `intake_field_too_short` / `intake_field_too_long` / `display_name_invalid` / `intake_unrelated_topic` |
 | 504 | `llm_timeout` |
+| 502 | `llm_authentication_failed`（DeepSeek API Key 无效；请检查服务器 `DEEPSEEK_API_KEY`） |
 | 500 | `llm_failure` / `repository_io_error` |
 
 **业务行为细节**：

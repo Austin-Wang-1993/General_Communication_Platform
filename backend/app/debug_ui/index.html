@@ -164,11 +164,29 @@
         }
         .status-ok { color: var(--ok); font-weight: 600; }
         .status-err { color: var(--err); font-weight: 600; }
-        .placeholder {
-            color: var(--text-soft);
-            font-style: italic;
+        label {
+            display: block;
             font-size: 13px;
+            margin-bottom: 4px;
+            color: var(--text-soft);
         }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+        textarea { min-height: 72px; resize: vertical; }
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .field-row input { width: auto; margin-bottom: 0; }
         footer {
             max-width: 960px;
             margin: 24px auto 0;
@@ -222,10 +240,30 @@
         </section>
 
         <section class="card">
-            <h2>③ 五字段录入与扩写 <span class="tag">M2（待实现）</span></h2>
-            <p class="placeholder">
-                M2 阶段开通：提交五字段 → 调 §6.1 扩写智能体 → 查看 <code>analysis.json</code>。
+            <h2>③ 五字段录入与扩写 <span class="tag">M2 / API §2.5</span></h2>
+            <p style="font-size:13px;color:var(--text-soft);margin:0 0 12px;">
+                先在 ② 选中一个场景包。本区调用真实 DeepSeek（需服务器已配置 <code>DEEPSEEK_API_KEY</code>）。
+                若包内已有 <code>framework.json</code>，请勾选「强制重置创作」。
             </p>
+            <div class="toolbar">
+                <button id="btn-commit-intake" type="button">提交五字段并扩写</button>
+            </div>
+            <label for="in-scenario-title">场景名称 scenario_title</label>
+            <input type="text" id="in-scenario-title" maxlength="120" placeholder="1~120 字" />
+            <label for="in-display-name">显示名 user_display_name</label>
+            <input type="text" id="in-display-name" maxlength="120" placeholder="1~120 字" />
+            <label for="in-scene-brief">你梦想的场景 scene_brief（≥40 字）</label>
+            <textarea id="in-scene-brief" rows="4" placeholder="中文或中英混合描述场景…"></textarea>
+            <label for="in-goal-brief">你的目标 user_goal_brief（≥10 字）</label>
+            <textarea id="in-goal-brief" rows="3"></textarea>
+            <label for="in-vocab">词汇表 vocabulary_list（可选，逗号或换行）</label>
+            <textarea id="in-vocab" rows="2" placeholder="stakeholder, alignment, blocker"></textarea>
+            <div class="field-row">
+                <input type="checkbox" id="in-force-reset" />
+                <label for="in-force-reset" style="margin:0;">force_reset_creation（已有 framework 时必选）</label>
+            </div>
+            <div class="split-title">最近一次 commit-intake 响应</div>
+            <pre class="output" id="out-intake"><span class="placeholder">提交后显示 JSON；同时可展开 ② 区「原始响应」查看列表/详情是否已更新</span></pre>
         </section>
 
         <section class="card">
