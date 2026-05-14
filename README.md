@@ -40,9 +40,9 @@
 ## 技术选型（已确定）
 
 - **前端**：Vite + React + TypeScript + Tailwind CSS + Zustand + TanStack Query（**移动端优先**）
-- **后端**：Python 3.11 + FastAPI + httpx + DeepSeek LLM
+- **后端**：Python 3.11 + FastAPI + httpx + **DeepSeek `deepseek-chat`**
 - **持久化**：纯文件 + JSON（`data/scenarios/{scenario_id}/...`），首版**不用数据库**
-- **部署**：腾讯云 Ubuntu + Nginx + systemd + Let's Encrypt
+- **部署**：腾讯云 Ubuntu + Nginx + systemd + **纯 IP `43.155.205.89` HTTP 直连**（首版无 HTTPS）
 
 ---
 
