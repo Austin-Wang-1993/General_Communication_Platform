@@ -22,6 +22,7 @@ def rt_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     from app import config as config_module
     from app import dependencies as deps_module
     from app.repositories.framework_repo import FrameworkRepo
+    from app.repositories.hints_repo import HintsRepo
     from app.repositories.roster_repo import RosterRepo
     from app.repositories.turns_repo import TurnsRepo
     from app.services.runtime_service import RuntimeService
@@ -67,6 +68,7 @@ def rt_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
             framework_repo=FrameworkRepo(pr.data_dir),
             roster_repo=RosterRepo(pr.data_dir),
             turns_repo=TurnsRepo(pr.data_dir),
+            hints_repo=HintsRepo(pr.data_dir),
             llm_client=FakeLlm(),  # type: ignore[arg-type]
         )
 

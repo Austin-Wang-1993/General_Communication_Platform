@@ -104,6 +104,7 @@ def get_job_control_service() -> "JobControlService":
 
 
 def get_runtime_service() -> "RuntimeService":
+    from app.repositories.hints_repo import HintsRepo
     from app.repositories.turns_repo import TurnsRepo
     from app.services.runtime_service import RuntimeService
 
@@ -114,5 +115,23 @@ def get_runtime_service() -> "RuntimeService":
         framework_repo=FrameworkRepo(pr.data_dir),
         roster_repo=RosterRepo(pr.data_dir),
         turns_repo=TurnsRepo(pr.data_dir),
+        hints_repo=HintsRepo(pr.data_dir),
+        llm_client=LlmClient(settings),
+    )
+
+
+def get_hints_service() -> "HintsService":
+    from app.repositories.hints_repo import HintsRepo
+    from app.repositories.turns_repo import TurnsRepo
+    from app.services.hints_service import HintsService
+
+    pr = get_package_repo()
+    settings = get_settings()
+    return HintsService(
+        package_repo=pr,
+        framework_repo=FrameworkRepo(pr.data_dir),
+        roster_repo=RosterRepo(pr.data_dir),
+        turns_repo=TurnsRepo(pr.data_dir),
+        hints_repo=HintsRepo(pr.data_dir),
         llm_client=LlmClient(settings),
     )

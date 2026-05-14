@@ -37,6 +37,7 @@ from app.models.story_assets import CharacterRosterFile, StoryFrameworkFile
 from app.models.turns import TurnRecord
 from app.repositories.base import get_scenario_lock, read_json
 from app.repositories.framework_repo import FrameworkRepo
+from app.repositories.hints_repo import HintsRepo
 from app.repositories.package_repo import PackageRepo
 from app.repositories.roster_repo import RosterRepo
 from app.repositories.turns_repo import TurnsRepo
@@ -55,12 +56,14 @@ class RuntimeService:
         framework_repo: FrameworkRepo,
         roster_repo: RosterRepo,
         turns_repo: TurnsRepo,
+        hints_repo: HintsRepo,
         llm_client: LlmClient,
     ) -> None:
         self.package_repo = package_repo
         self.framework_repo = framework_repo
         self.roster_repo = roster_repo
         self.turns_repo = turns_repo
+        self.hints_repo = hints_repo
         self.llm = llm_client
 
     def _locate_section(self, sf: StoryFrameworkFile, ch: int, sec: int) -> None:
@@ -430,6 +433,7 @@ class RuntimeService:
             )
             user_d = user_turn.model_dump(mode="json")
             await self.turns_repo.append(scenario_id, chapter_id, section_id, user_d)
+            await self.hints_repo.mark_stale_if_ready(scenario_id, chapter_id, section_id)
 
             allowed_speakers = set(narrative.appearing_npc_ids)
             npc_payload: dict[str, Any] = {

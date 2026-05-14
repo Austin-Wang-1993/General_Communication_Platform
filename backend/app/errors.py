@@ -153,6 +153,12 @@ class SectionNotFoundError(GcpError):
     message = "指定的 section_id 在该章中不存在或本节资产缺失"
 
 
+class TurnNotFoundError(GcpError):
+    http_status = 404
+    error_code = "turn_not_found"
+    message = "回合不存在或不是当前待回复的 NPC 回合"
+
+
 class AutoOpenerFailedError(GcpError):
     http_status = 500
     error_code = "auto_opener_failed"

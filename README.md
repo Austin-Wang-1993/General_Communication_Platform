@@ -6,15 +6,15 @@
 
 ## 当前状态
 
-**`main` 已合并 M0~M5（运行期对话主链）**：含 **`GET .../runtime`**、**`POST .../enter`**（自动开场）、**`GET/POST .../turns`**、**`POST .../auto-opener`**、调试页 **NPC 单选收件人**；`GET .../turns` 支持 **`limit`**。**尚未实现**：§6.6.4 全量链式规则、`POST .../hints` / `GET .../hints/latest`、本节复盘等。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（推荐 **`server-one-shot-sync.sh`** 同步 **`main`**）。
+**后端进度**：`main` 已含运行期 **runtime / enter / turns / auto-opener**、调试页 NPC 单选收件人等。**本分支 `cursor/m5-hints-f7da` 新增**：**`POST .../hints`**、**`GET .../hints/latest`**（R1，落盘 `hint_latest.json`；用户发回合后旧提示变 **stale**）。请在服务器用 `server-one-shot-sync.sh` **同步本分支验证**，通过后再合并入 `main`。**尚未实现**：§6.6.4 全量链式规则、本节复盘 `analytics` 等。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（推荐 **`server-one-shot-sync.sh`** 同步 **`main`**）。
 
-- 后端：FastAPI + `health` + `scenario-packages`（含 **runtime / enter / turns / auto-opener**、前述 M1~M4 能力）
+- 后端：FastAPI + `health` + `scenario-packages`（含 **runtime / enter / turns / auto-opener / hints**、前述 M1~M4 能力）
 - 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
 - 调试页：`backend/app/debug_ui/`（②~⑥，含进节与 runtime）
 - 部署：`deploy/`（含 **`server-one-shot-sync.sh`** 一键同步）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-**下一步**：补全 M5——§6.6.4 规则校验（多 NPC 链等）、`POST .../hints`、复盘与评估接口。
+**下一步**：§6.6.4 规则校验、本节复盘 `POST .../analytics` 等。
 
 ---
 
