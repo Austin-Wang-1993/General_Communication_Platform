@@ -117,6 +117,14 @@ class LlmTimeoutError(GcpError):
     message = "语言模型响应超时，请稍后重试"
 
 
+class LlmAuthenticationError(GcpError):
+    """DeepSeek 返回 401/403：多为 API Key 错误、过期或环境变量含多余空白。"""
+
+    http_status = 502
+    error_code = "llm_authentication_failed"
+    message = "DeepSeek 拒绝了当前 API Key，请检查服务器上的 DEEPSEEK_API_KEY 是否正确"
+
+
 class LlmFailureError(GcpError):
     http_status = 500
     error_code = "llm_failure"

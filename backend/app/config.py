@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,6 +48,14 @@ class Settings(BaseSettings):
 
     # === 服务元信息 ===
     service_name: str = Field(default="gcp-backend", description="服务标识符")
+
+    @field_validator("deepseek_api_key", mode="before")
+    @classmethod
+    def strip_deepseek_api_key(cls, v: object) -> object:
+        """去掉首尾空白/换行，避免从 .env 或 systemd 复制时多一个不可见字符导致 401。"""
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
     model_config = SettingsConfigDict(
         env_file=".env",

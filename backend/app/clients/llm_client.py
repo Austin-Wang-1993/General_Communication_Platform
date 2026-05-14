@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 
 from app.config import Settings
-from app.errors import LlmFailureError, LlmTimeoutError
+from app.errors import LlmAuthenticationError, LlmFailureError, LlmTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,15 @@ class LlmClient:
                 message="无法连接语言模型服务",
                 details={"reason": str(e)},
             ) from e
+
+        if resp.status_code in (401, 403):
+            raise LlmAuthenticationError(
+                details={
+                    "upstream_status": resp.status_code,
+                    "body": resp.text[:2000],
+                    "hint": "在 DeepSeek 控制台重新生成 Key；检查 systemd EnvironmentFile 是否有多余引号、空格或换行",
+                },
+            )
 
         if resp.status_code >= 400:
             raise LlmFailureError(

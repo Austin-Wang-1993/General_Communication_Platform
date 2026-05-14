@@ -14,7 +14,7 @@
 - 部署：`deploy/{gcp-backend.service, nginx-gcp.conf, pull-and-restart.sh, **server-one-shot-sync.sh**}`（服务器**一键同步**见运维指南「一键同步」节）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-**M2**（五字段 `commit-intake` + DeepSeek 扩写）在本仓库当前开发分支实现；合并 `main` 后健康检查中的 `version` 将升至 **0.3.0**。接下来按技术方案 §9 推进 **M3** 及以后阶段。
+**M2**（五字段 `commit-intake` + DeepSeek 扩写）在本仓库当前开发分支实现；合并 `main` 后健康检查中的 `version` 将反映当前后端发布号（如 **0.3.1**）。接下来按技术方案 §9 推进 **M3** 及以后阶段。
 
 ---
 
