@@ -1,0 +1,55 @@
+# --- 通用 ---
+*.log
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- 编辑器/IDE ---
+.vscode/
+.idea/
+*.iml
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+htmlcov/
+.coverage
+.coverage.*
+
+# --- Node / 前端 ---
+node_modules/
+frontend/dist/
+*.local
+*.tsbuildinfo
+.npm
+.yarn
+
+# --- 运行时数据（不入仓） ---
+# 后端 JSON 数据根目录,绝对不能入仓——含用户场景包对话历史
+backend/data/
+data/
+
+# --- 环境变量 / 密钥（绝对不能入仓） ---
+.env
+.env.local
+.env.*.local
+*.env
+
+# --- 部署侧产物 ---
+*.pid
+*.sock
+
+# --- Cursor / AI 工具 ---
+.cursor/
