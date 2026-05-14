@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-**本轮后端迭代（分支 `cursor/m5-post-turns-f7da`，合并进 `main` 前请在服务器测此分支）**：在 M5 首批基础上增加 **`GET/POST .../sections/{ch}/{sec}/turns`**（用户发言 + 同步一条 NPC 续聊）、**`POST .../auto-opener`**（显式自动开场重试）、`GET .../turns` 的 **`limit`** 查询参数。**尚未实现**：§6.6.4 全量规则（如多 NPC 连续链上限）、`POST .../hints` / 复盘等。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（推荐 **`server-one-shot-sync.sh`**）。
+**`main` 已合并 M0~M5（运行期对话主链）**：含 **`GET .../runtime`**、**`POST .../enter`**（自动开场）、**`GET/POST .../turns`**、**`POST .../auto-opener`**、调试页 **NPC 单选收件人**；`GET .../turns` 支持 **`limit`**。**尚未实现**：§6.6.4 全量链式规则、`POST .../hints` / `GET .../hints/latest`、本节复盘等。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（推荐 **`server-one-shot-sync.sh`** 同步 **`main`**）。
 
 - 后端：FastAPI + `health` + `scenario-packages`（含 **runtime / enter / turns / auto-opener**、前述 M1~M4 能力）
 - 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
