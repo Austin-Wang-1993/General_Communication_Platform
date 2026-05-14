@@ -128,8 +128,25 @@ if [ "${NEED_BUILD:-0}" = "1" ]; then
     ok "前端已构建到 ${FRONTEND_DIR}/dist"
 fi
 
+# 判断 systemd 是否已识别某单元（比 list-unit-files | grep 更稳：无 root 时列表可能不全、
+# 或刚 cp 单元文件尚未 daemon-reload 导致「文件在磁盘但 list 里没有」）。
+_gcp_backend_unit_ready() {
+    local st
+    st=$(systemctl show gcp-backend.service -p LoadState --value 2>/dev/null || true)
+    if [ "$st" = "loaded" ]; then
+        return 0
+    fi
+    if [ -f /etc/systemd/system/gcp-backend.service ]; then
+        warn "已发现 /etc/systemd/system/gcp-backend.service，但 systemd 尚未加载；执行 daemon-reload…"
+        sudo systemctl daemon-reload
+        st=$(systemctl show gcp-backend.service -p LoadState --value 2>/dev/null || true)
+        [ "$st" = "loaded" ] && return 0
+    fi
+    return 1
+}
+
 # === 5. 重启后端（必须）与本机健康检查 ===
-if systemctl list-unit-files 2>/dev/null | grep -q '^gcp-backend.service'; then
+if _gcp_backend_unit_ready; then
     info "重启 gcp-backend.service"
     sudo systemctl restart gcp-backend
     sleep 2
@@ -160,13 +177,14 @@ if systemctl list-unit-files 2>/dev/null | grep -q '^gcp-backend.service'; then
         info "OpenAPI 未出现 scenario-packages（main/M0 属正常；若你期望 M1+ 仍无此项，请核对分支与 commit）"
     fi
 else
-    err "未注册 systemd 单元 gcp-backend.service，无法重启后端，部署未完成。"
-    err "请先完成 docs/operations/01-腾讯云部署指南.md「步骤 8」再执行本脚本。"
+    err "systemd 未加载 gcp-backend.service（LoadState≠loaded）。请核对步骤 8 是否已执行，并在服务器上手动检查："
+    err "  ls -la /etc/systemd/system/gcp-backend.service && systemctl show gcp-backend.service -p LoadState"
+    err "  若文件存在但 LoadState=not-found：sudo systemctl daemon-reload && sudo systemctl enable --now gcp-backend"
     exit 1
 fi
 
 # === 6. reload Nginx ===
-if systemctl list-unit-files 2>/dev/null | grep -q '^nginx.service'; then
+if systemctl show nginx.service -p LoadState --value 2>/dev/null | grep -qx loaded; then
     info "reload Nginx"
     sudo systemctl reload nginx
     ok "Nginx 已 reload"
