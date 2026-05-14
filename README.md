@@ -6,11 +6,10 @@
 
 ## 当前状态
 
-**后端进度**：`main` 已含 **runtime / enter / turns / auto-opener / hints** 等。**本分支 `cursor/m5-analytics-f7da` 新增**：**`POST .../sections/{ch}/{sec}/analytics`**、**`GET .../analytics`**（R2，成功复盘落盘 `analytics.json`；无成功记录时 GET 为 **204**）。请在服务器用 `server-one-shot-sync.sh` **同步本分支验证**，通过后再合并入 `main`。**尚未实现**：§6.6.4 全量链式规则等。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)。
+**`main` 已合并**：运行期 **runtime / enter / turns / auto-opener**、**R1 hints**、**R2 analytics**（`hint_latest.json` / `analytics.json`）、调试页 **⑥ NPC 单选收件人** 等。**调试页 ⑦（R1/R2 按钮）** 在功能分支 **`cursor/m5-debug-ui-r1r2-f7da`**，合并进 `main` 前请用该分支在服务器验证。**尚未实现**：§6.6.4 全量链式规则等。同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（验证 ⑦ 时用 `server-one-shot-sync.sh 'cursor/m5-debug-ui-r1r2-f7da'`；日常跟 `main` 用 `'main'`）。
 
-- 后端：FastAPI …（`main`：至 hints；本分支：+analytics）
-- 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
-- 调试页：`backend/app/debug_ui/`（②~⑥，含进节、runtime、回合与 hints）
+- 后端：FastAPI + `scenario-packages`（含 **hints + analytics**、前述运行期与 M1~M4 能力）
+- 调试页：`backend/app/debug_ui/`（②~⑦：⑦ 随上述分支合并到 `main` 后生效）
 - 部署：`deploy/`（含 **`server-one-shot-sync.sh`** 一键同步）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
