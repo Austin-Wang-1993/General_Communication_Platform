@@ -244,3 +244,20 @@ class LlmClient:
             user_content=user_content,
             temperature=temperature,
         )
+
+    async def generate_section_analytics_json(
+        self,
+        *,
+        payload: dict[str, Any],
+        repair_hint: str | None = None,
+        temperature: float = 0.4,
+    ) -> dict[str, Any]:
+        p = dict(payload)
+        if repair_hint:
+            p["repair_instruction"] = repair_hint
+        user_content = json.dumps(p, ensure_ascii=False)
+        return await self._chat_json_object(
+            system=load_prompt("section_analytics.md"),
+            user_content=user_content,
+            temperature=temperature,
+        )

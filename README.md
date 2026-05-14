@@ -6,15 +6,15 @@
 
 ## 当前状态
 
-**`main` 已合并 M0~M5 运行期主链 + R1**：含 **`GET .../runtime`**、**`POST .../enter`**、**`GET/POST .../turns`**、**`POST .../auto-opener`**、**`POST .../hints`** / **`GET .../hints/latest`**（`hint_latest.json`）、调试页 **NPC 单选收件人**；`GET .../turns` 支持 **`limit`**。**尚未实现**：§6.6.4 全量链式规则、本节复盘 **`POST .../analytics`** 等。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（推荐 **`server-one-shot-sync.sh 'main'`**）。
+**后端进度**：`main` 已含 **runtime / enter / turns / auto-opener / hints** 等。**本分支 `cursor/m5-analytics-f7da` 新增**：**`POST .../sections/{ch}/{sec}/analytics`**、**`GET .../analytics`**（R2，成功复盘落盘 `analytics.json`；无成功记录时 GET 为 **204**）。请在服务器用 `server-one-shot-sync.sh` **同步本分支验证**，通过后再合并入 `main`。**尚未实现**：§6.6.4 全量链式规则等。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)。
 
-- 后端：FastAPI + `health` + `scenario-packages`（含 **runtime / enter / turns / auto-opener / hints**、前述 M1~M4 能力）
+- 后端：FastAPI …（`main`：至 hints；本分支：+analytics）
 - 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
 - 调试页：`backend/app/debug_ui/`（②~⑥，含进节、runtime、回合与 hints）
 - 部署：`deploy/`（含 **`server-one-shot-sync.sh`** 一键同步）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-**下一步**：§6.6.4 规则校验、本节复盘 `POST .../analytics` 等。
+**下一步**：§6.6.4 规则校验等。
 
 ---
 
