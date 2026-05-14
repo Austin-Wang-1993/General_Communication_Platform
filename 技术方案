@@ -1,1 +1,263 @@
+# 场景包独立版 · 技术方案雏形（草案）
 
+> **文档版本**：v0.1.2  
+> **更新时间**：2026-05-09  
+> **关联需求**：同目录 **`prd-scenario-package-v2.md`**（产品语义与字段）、**`frontend-scenario-demo.md`**（C 端 Demo 交互）。  
+> **与现有仓库关系**：本雏形面向「**可新起一仓**」或「**自当前 monorepo 演进**」两种路径；技术选型与部署习惯**对齐**本仓库已验证的 **`docs/engineering/architecture.md`** + **`docs/operations/tencentcloud-ubuntu22-deploy.md`**，但不绑定现有 `story_runs/current_run` 等旧路径命名。
+
+---
+
+## 1. 文档目的与分工
+
+| 文档 | 回答的问题 |
+|------|------------|
+| `prd-scenario-package-v2.md` | **做什么**：枚举、业务规则、智能体 I/O 语义（**不**规定存储与 URL） |
+| `frontend-scenario-demo.md` | **用户怎么点**：页面、状态、验收故事 |
+| **本文** | **怎么做**：分层架构、持久化选型、**API 雏形**、任务与状态机、实施分期、部署要点、风险与待决 |
+
+实现时若接口字段与 PRD 枚举冲突，**以 PRD 为准**并回写本文。
+
+---
+
+## 2. 目标与范围（首版可交付）
+
+**目标**：跑通「单用户、多场景包隔离」下的 **§6.1～§6.6 主链** + **§6.7 / §6.8 双轨评估**（可按 PRD §8 分期），前端满足 **`frontend-scenario-demo.md`** 所列 P1～P3a 与 DBG 入口策略。
+
+**首版建议范围**
+
+- 单租户、单后端进程；创作期与运行期 API 明确分离。  
+- **§5.7**：每小节 `section_narrative` / `section_mission` **独立存储**；**禁止**单次 LLM 调用落盘全书小节。  
+- **§5.6.1 Demo**：运行期允许 **P3a 任意节切换**（指针直接改 `chapter_id`/`section_id`）；数据读写仍只针对**当前指针**小节。  
+- **完整产品**若收紧线性，可通过配置开关关闭 P3a 豁免（产品 + 配置层，不单靠前端隐藏）。
+
+**非目标（首版可明确不做）**
+
+- 多租户账号、计费、消息队列集群、终局旅程报告（PRD §4 已说明可另文）。  
+- 语音实时流、离线客户端。
+
+---
+
+## 3. 技术选型（沿用已验证路径）
+
+| 层级 | 选型 | 说明 |
+|------|------|------|
+| 前端 | **Vite + React + TypeScript** | SPA；`services/` 封装 API；路由对应 P1～P3a |
+| 后端 | **Python 3.11+** | 编排、校验、文件或 DB I/O |
+| Web | **FastAPI + Uvicorn** | REST + 可选 **SSE** 推送创作进度（满足 G10） |
+| LLM | **DeepSeek（或等价）** | Key 仅服务端；LangChain / 自研薄封装均可 |
+| 提示词 | **按智能体分 Markdown** | 与 PRD §6 一一对应，便于迭代与 Code Review |
+| 首版持久化（推荐） | **SQLite + 按小节 JSON/BLOB 分表或分文件** | 单机易部署；`scenario_id` 外键清晰；亦可用「目录树 + JSON」纯文件方案（运维简单、并发弱） |
+| 部署 | **腾讯云 Ubuntu + Nginx + systemd** | 静态 `dist` + 反代 `/api`；同 **`tencentcloud-ubuntu22-deploy.md`** 思路 |
+
+---
+
+## 4. 逻辑架构
+
+```text
+浏览器（React）
+  │  HTTPS JSON（+ 可选 SSE：创作进度）
+  ▼
+Nginx
+  ├ /          → 前端静态资源
+  └ /api/      → FastAPI
+         │
+         ├─ ScenarioPackageService（包级 CRUD、lifecycle_phase）
+         ├─ CreationPipeline（§6.1→§6.5 顺序 / 并行策略内部定）
+         ├─ SectionStore（按 scenario_id+chapter+section 读写 narrative/mission）
+         ├─ DialogueService（§6.6 turns、runtime_awaiting_user、turn_writer）
+         ├─ HintService（§6.7，R1，异步不阻塞主链）
+         ├─ SectionAnalyticsService（§6.8，R2，显式触发）
+         └─ Validators（对齐 PRD 封闭枚举与 §6.6.4 规则）
+```
+
+---
+
+## 5. 核心数据模型（实现侧建议）
+
+以下为**逻辑实体**，表名可映射为 SQL 或「目录 + JSON」文件集合。
+
+### 5.1 `scenario_package`（包根）
+
+| 字段 | 类型建议 | 说明 |
+|------|----------|------|
+| `scenario_id` | UUID 字符串 | 与 PRD §5.2 一致 |
+| `scenario_title` 等 | 文本 | 对齐 §5.5 / §6.1 |
+| `lifecycle_phase` | enum 8 值 | §5.4 |
+| `current_chapter_id` / `current_section_id` | int 或 null | §5.5；运行期非 null |
+| `created_at` / `updated_at` | RFC3339 | §5.3 |
+
+### 5.2 创作产物（分表或分路径）
+
+| 实体 | 粒度 | 说明 |
+|------|------|------|
+| `intake_snapshot` | 每包一行 | 用户五字段锁定后不可变（`intake_committed` 后） |
+| `scenario_analysis` | 每包一行 | §6.1 输出字段 JSON 列 |
+| `story_framework` | 每包一行 | §6.2.3 JSON |
+| `character_roster` | 每包一行 | §6.3.2 JSON |
+| `section_narrative` | **每小节一行** | `(scenario_id, chapter_id, section_id)` 唯一；§6.4.2 |
+| `section_mission` | **每小节一行** | 同上；§6.5.2 |
+| `turn` | **每小节多行** | §6.6.3；按节查询 |
+| `user_reply_hint` | 多行 | 绑定 `linked_turn_id`；§6.7 |
+| `section_analytics` | 每小节可有历史多版或仅保留最新 | 与 PRD「成功覆盖」策略对齐；§6.8 |
+
+**索引建议**：`(scenario_id, chapter_id, section_id)` 在 turn / hint / analytics 上均建索引。
+
+---
+
+## 6. API 雏形（REST 分组）
+
+前缀统一 **`/api/v1`**。下列为**资源向**设计，路径可微调，**字段名**建议与 PRD JSON 键一致，减少映射层。
+
+### 6.1 场景包与入口
+
+| 方法 | 路径 | 作用 |
+|------|------|------|
+| `POST` | `/scenario-packages` | 创建包，返回 `scenario_id`，初始 `lifecycle_phase=draft` |
+| `GET` | `/scenario-packages` | P2 列表 |
+| `GET` | `/scenario-packages/{scenario_id}` | 包根 + 可选摘要 |
+| `DELETE` | `/scenario-packages/{scenario_id}` | P2b 删除 |
+| `POST` | `/scenario-packages/{scenario_id}/commit-intake` | 五字段校验并锁定 → `intake_committed` |
+
+### 6.2 创作流水线（与 P2.2 / P2.4 / G3 / G4 对齐）
+
+**方案 A（推荐 Demo）**：**异步 Job + 轮询 / SSE**
+
+| 方法 | 路径 | 作用 |
+|------|------|------|
+| `POST` | `/scenario-packages/{id}/jobs/framework` | 启动 §6.2（及编排上的 §6.3）；返回 `job_id` |
+| `GET` | `/scenario-packages/{id}/jobs/{job_id}` | 状态 + **`current_step_label`**（G10）+ `percent`（可选，诚实可为 null） |
+| `POST` | `/scenario-packages/{id}/jobs/framework/cancel` | 对齐 P2.2 取消语义 |
+| `POST` | `/scenario-packages/{id}/jobs/world` | 启动全书小节循环 §6.4+§6.5（每节独立调用 LLM） |
+| `GET` | 同上 job 查询 | 小节级进度文案 |
+| `POST` | `/scenario-packages/{id}/jobs/world/cancel` | P2.4 取消 → 清全部 section 资产（G4） |
+
+**方案 B（简化）**：同步 HTTP 仅适合极短链路；**不推荐**用于全书小节生成。
+
+**`POST .../commit-intake` 请求体（示例）**
+
+```json
+{
+  "scenario_title": "string",
+  "user_display_name": "string",
+  "scene_brief": "string",
+  "user_goal_brief": "string",
+  "vocabulary_list": "string",
+  "force_reset_creation": true
+}
+```
+
+- `force_reset_creation`：当包内已有 `story_framework` 且用户从 P2.1 再次提交时，**G3** 置 true，后端原子删除下游产物后再跑新 job。
+
+### 6.3 运行期（P3）
+
+| 方法 | 路径 | 作用 |
+|------|------|------|
+| `GET` | `/scenario-packages/{id}/runtime` | `lifecycle_phase`、`current_*`、`runtime_awaiting_user`、本节 `prior_turns` 摘要等 |
+| `POST` | `/scenario-packages/{id}/sections/{ch}/{sec}/enter` | 进入运行态 / 或 P2.5「直接探索」设置指针到 `S[0]` |
+| `POST` | `/scenario-packages/{id}/sections/{ch}/{sec}/pointer` | **Demo**：P3a 任意切换指针（完整产品可 403） |
+| `GET` | `/scenario-packages/{id}/sections/{ch}/{sec}/turns` | 本节全量聊天记录（升序） |
+| `POST` | `/scenario-packages/{id}/sections/{ch}/{sec}/turns` | body 为单条用户发言：`content`、`recipient_id`；服务端写 `turn_writer=human_user` 并触发 NPC 生成链 |
+| `POST` | `/scenario-packages/{id}/sections/{ch}/{sec}/hints` | body：`target_turn_id`；仅当等待用户时 200，否则 409 |
+| `GET` | `/scenario-packages/{id}/sections/{ch}/{sec}/hints/latest` | 读当前绑定建议 |
+| `POST` | `/scenario-packages/{id}/sections/{ch}/{sec}/analytics` | 触发 §6.8；返回 job 或直接同步结果（视超时策略） |
+
+**`POST .../turns` 请求体（示例）**
+
+```json
+{
+  "content": "English text...",
+  "recipient_id": "npc_pm_lead"
+}
+```
+
+**单条 `turn` 响应字段**：须包含 PRD §6.6.3 全部键（含 `turn_writer`）。
+
+### 6.4 错误与枚举
+
+- HTTP **409**：业务状态不允许（如非等待用户却发 hint）。  
+- HTTP **422**：校验失败（长度、枚举外值、`speaker_id`/`recipient_id` 非法等）。  
+- 响应体统一 `{"error_code","message","details?}`，便于前端 Toast。
+
+---
+
+## 7. 长任务与 G10 进度
+
+- **Job 表**（或内存 + Redis，首版可仅 DB）：`job_id`、`scenario_id`、`type`（framework|world）、`status`（queued|running|succeeded|failed|canceled）、`current_step_label`、`updated_at`。  
+- **P2.2 / P2.4**：前端轮询 `GET .../jobs/{id}` 每 500ms～1.5s；或 **SSE** `GET .../jobs/{id}/stream` 推送 `current_step_label`。  
+- 后端在编排循环每完成一个 **LLM 可观测步骤** 更新 `current_step_label`（与产品文案表对齐，可配置）。
+
+---
+
+## 8. 状态机（实现要点）
+
+1. **`lifecycle_phase`**：严格实现 PRD §5.4 迁移；`creation_running` 与 Job 状态可并行，但产品展示以 Job 为准。  
+2. **`runtime_awaiting_user`**：与 §6.6.4 及最后一条 `turn` 的 `expects_user_response` 一致；**所有**写 `turn` 的入口须走同一领域服务以防分叉。  
+3. **P3a 指针切换**：事务内更新 `current_chapter_id`/`current_section_id`；可选清空 UI 草稿（前端）；服务端不自动删 turn。  
+4. **R1/R2**：异步任务不持有对话写锁；失败不回滚 `lifecycle_phase`。
+
+---
+
+## 9. 代码实施分期（建议）
+
+| 阶段 | 内容 | 产出可验收点 |
+|------|------|----------------|
+| **P0** | 仓库骨架、OpenAPI 或手写路由表、SQLite schema、枚举常量自 PRD 生成或单测锁定 | 空包 CRUD + 删除 |
+| **P1** | §6.1 intake + commit + 校验 | P2.1→锁定快照 |
+| **P2** | Job：framework + roster（§6.2+§6.3）+ G10 | P2.2→P2.3 |
+| **P3** | Job：world 循环 §6.4/§6.5 + cancel 清库 | P2.4→P2.5 |
+| **P4** | Runtime + turns + `runtime_awaiting_user` + §6.6.4 | P3 聊天闭环 |
+| **P5** | §6.7 hint + §6.8 analytics | 双轨弹窗 |
+| **P6** | 前端完全对齐 `frontend-scenario-demo.md` 用户故事 + DBG 外链/内嵌 | 联调通过 |
+
+每阶段结束：**接口契约冻结小版本**（文档或 OpenAPI tag）。
+
+---
+
+## 10. 前端落地要点（与 Demo 文档映射）
+
+- **路由**：`/welcome` → `/scenarios` → `/scenarios/new`（向导）→ `/scenarios/:id/chat`。  
+- **`services/`**：`scenarioApi.ts`、`creationJobsApi.ts`、`runtimeApi.ts` 与 §6 分组一致。  
+- **状态**：React Query（或 RTK Query）管理轮询 Job；聊天区按 `section` 维度 cache。  
+- **配置项**：`VITE_DEMO_FREE_SECTION_NAV=true` 控制是否展示 P3a「任意节」入口（与完整产品差异）。
+
+---
+
+## 11. 环境部署（雏形）
+
+- **构建**：`frontend npm run build`；`backend` 用 `uvicorn app.main:app --host 0.0.0.0 --port 8000`。  
+- **Nginx**：`/` → `dist`；`/api/` → `proxy_pass http://127.0.0.1:8000`。  
+- **环境变量**：`DEEPSEEK_API_KEY`、`DATABASE_URL`（若用 SQLite 则为文件路径）、`CORS_ORIGINS`。  
+- **HTTPS**：Let's Encrypt 或腾讯云证书；与现有运维文档同套路。  
+- **数据备份**：定期拷贝 SQLite 文件或卷快照（首版足够）。  
+- **实施链路（Cursor / AI → GitHub → 腾讯云原仓拉取）**与**可复制脚本**：见 **`docs/operations/cursor-github-tencentcloud-workflow.md`**（与 **`tencentcloud-ubuntu22-deploy.md`** 配套）。
+
+---
+
+## 12. 风险与待决事项
+
+| 项 | 风险 / 说明 | 建议 |
+|----|-------------|------|
+| LLM 超时 | 单节 §6.4 仍可能超时 | Job 粒度按节重试；最大重试次数与死信记录 |
+| P3a 任意节 | 用户跳过「未聊」节 | Demo 可接受；完整产品加开关 |
+| 并发 | 单用户 Demo 低 | 包级行锁或「单写者」队列；多用户后续再上锁 |
+| `appearing_npc_ids` 为空 | 独白节无 recipient | 前端隐藏选人；发送规则在 §6.4.3 已由 PRD说明，技术需显式分支 |
+| 与旧项目共存 | 两套 Agent 编号与路径 | 新仓或新 `backend_v2/` 子包，避免混用 `story_runs/current_run` |
+
+---
+
+## 13. 下一步（将雏形升级为正式技术方案）
+
+1. 定稿 **OpenAPI 3.1** YAML（或 FastAPI 自动生成）并与 PRD 字段逐字对照。  
+2. 画出 **包级 + 小节级 ER 图** 与 **Job 状态机图**。  
+3. 为 §6.1～§6.8 各写 **「输入 JSON Schema → LLM → 输出 Schema + Agent0 校验」** 一页纸。  
+4. 与 **`frontend-scenario-demo.md`** 做 **需求追踪表**（故事编号 ↔ API ↔ 测试用例）。
+
+---
+
+## 14. 更新记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v0.1.2 | 2026-05-09 | 移除 UI 线框文档引用；部署链路见 **`docs/operations/cursor-github-tencentcloud-workflow.md`** |
+| v0.1.1 | 2026-05-09 | §10 增加 **`ui-flow-wireframes.md`** / PNG 与前端映射说明 |
+| v0.1.0 | 2026-05-09 | 初稿：架构、持久化、API 雏形、Job/G10、分期、部署与风险 |
