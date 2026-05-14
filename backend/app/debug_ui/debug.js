@@ -39,10 +39,18 @@
       };
     }
     const durationMs = Math.round(performance.now() - start);
-    try {
-      payload = await response.json();
-    } catch (e) {
-      payload = { _raw: await response.text() };
+    const text = await response.text();
+    let payload;
+    if (response.status === 204 || response.status === 205) {
+      payload = { _empty_body: true, _message: '无响应体（常见于 GET …/hints/latest 或 GET …/analytics）' };
+    } else if (!text) {
+      payload = {};
+    } else {
+      try {
+        payload = JSON.parse(text);
+      } catch (e) {
+        payload = { _raw: text };
+      }
     }
     return {
       ok: response.ok,
@@ -161,6 +169,8 @@
     });
     if (prevId !== id) {
       clearTurnRecipientRadios();
+      const hintEl = document.getElementById('in-hint-target-turn-id');
+      if (hintEl) hintEl.value = '';
     }
   }
 
@@ -507,6 +517,8 @@
 
   function onEnterChSecChanged() {
     clearTurnRecipientRadios('章/节已变更，请重新进节或 GET runtime 以刷新 NPC 列表');
+    const hintEl = document.getElementById('in-hint-target-turn-id');
+    if (hintEl) hintEl.value = '';
   }
   if (inEnterCh) inEnterCh.addEventListener('change', onEnterChSecChanged);
   if (inEnterSec) inEnterSec.addEventListener('change', onEnterChSecChanged);
@@ -599,5 +611,153 @@
       }
     });
   }
+
+  // === ⑦ R1 hints + R2 analytics（与 ⑥ 共用章/节） ===
+  const outR1r2 = document.getElementById('out-r1r2');
+  const inHintTargetTurnId = document.getElementById('in-hint-target-turn-id');
+  const btnHintFillTarget = document.getElementById('btn-hint-fill-target');
+  const btnPostHint = document.getElementById('btn-post-hint');
+  const btnGetHintLatest = document.getElementById('btn-get-hint-latest');
+  const btnPostAnalytics = document.getElementById('btn-post-analytics');
+  const btnGetAnalytics = document.getElementById('btn-get-analytics');
+
+  function pickLastAwaitingNpcTurnId(turnsArr) {
+    if (!Array.isArray(turnsArr)) return '';
+    for (let i = turnsArr.length - 1; i >= 0; i -= 1) {
+      const t = turnsArr[i];
+      if (t && t.expects_user_response && t.speaker_id && t.speaker_id !== 'user') {
+        return String(t.turn_id || '');
+      }
+    }
+    return '';
+  }
+
+  if (btnHintFillTarget && inHintTargetTurnId && outR1r2) {
+    btnHintFillTarget.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
+      const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
+      btnHintFillTarget.disabled = true;
+      try {
+        const result = await apiCall(
+          'GET',
+          `/scenario-packages/${selectedId}/sections/${ch}/${sec}/turns`,
+        );
+        renderResult(rawOut, result);
+        renderResult(outR1r2, result);
+        if (result.ok && result.payload && Array.isArray(result.payload.turns)) {
+          const tid = pickLastAwaitingNpcTurnId(result.payload.turns);
+          if (tid) {
+            inHintTargetTurnId.value = tid;
+          } else {
+            alert('未找到 expects_user_response 且说话人非 user 的回合；请先对话到等待用户状态。');
+          }
+        }
+      } finally {
+        btnHintFillTarget.disabled = false;
+      }
+    });
+  }
+
+  if (btnPostHint && outR1r2) {
+    btnPostHint.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
+      const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
+      const target_turn_id = (inHintTargetTurnId && inHintTargetTurnId.value.trim()) || '';
+      if (!target_turn_id) {
+        alert('请填写 target_turn_id，或先点「从 GET turns 填充」。');
+        return;
+      }
+      btnPostHint.disabled = true;
+      outR1r2.innerHTML = '<span class="placeholder">POST hints 请求中（调 LLM）…</span>';
+      try {
+        const result = await apiCall(
+          'POST',
+          `/scenario-packages/${selectedId}/sections/${ch}/${sec}/hints`,
+          { target_turn_id },
+        );
+        renderResult(rawOut, result);
+        renderResult(outR1r2, result);
+      } finally {
+        btnPostHint.disabled = false;
+      }
+    });
+  }
+
+  if (btnGetHintLatest && outR1r2) {
+    btnGetHintLatest.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
+      const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
+      btnGetHintLatest.disabled = true;
+      try {
+        const result = await apiCall(
+          'GET',
+          `/scenario-packages/${selectedId}/sections/${ch}/${sec}/hints/latest`,
+        );
+        renderResult(rawOut, result);
+        renderResult(outR1r2, result);
+      } finally {
+        btnGetHintLatest.disabled = false;
+      }
+    });
+  }
+
+  if (btnPostAnalytics && outR1r2) {
+    btnPostAnalytics.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
+      const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
+      btnPostAnalytics.disabled = true;
+      outR1r2.innerHTML = '<span class="placeholder">POST analytics 请求中（调 LLM）…</span>';
+      try {
+        const result = await apiCall(
+          'POST',
+          `/scenario-packages/${selectedId}/sections/${ch}/${sec}/analytics`,
+          {},
+        );
+        renderResult(rawOut, result);
+        renderResult(outR1r2, result);
+      } finally {
+        btnPostAnalytics.disabled = false;
+      }
+    });
+  }
+
+  if (btnGetAnalytics && outR1r2) {
+    btnGetAnalytics.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
+      const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
+      btnGetAnalytics.disabled = true;
+      try {
+        const result = await apiCall(
+          'GET',
+          `/scenario-packages/${selectedId}/sections/${ch}/${sec}/analytics`,
+        );
+        renderResult(rawOut, result);
+        renderResult(outR1r2, result);
+      } finally {
+        btnGetAnalytics.disabled = false;
+      }
+    });
+  }
+
   window.GcpDebug = { apiCall, renderResult, refreshList };
 })();

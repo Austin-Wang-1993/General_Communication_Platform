@@ -335,10 +335,33 @@
         </section>
 
         <section class="card">
-            <h2>⑦ R1 提示 + R2 复盘 <span class="tag">M5.5（待实现）</span></h2>
-            <p class="placeholder">
-                M5.5 阶段开通：等待用户时拉提示（§6.7）、点本节复盘（§6.8）。
+            <h2>⑦ R1 回答提示 + R2 本节复盘 <span class="tag">M5 / API §5~§6</span></h2>
+            <p style="font-size:13px;color:var(--text-soft);margin:0 0 12px;">
+                与上方 <strong>⑥</strong> 共用章/节数字框；需 <code>runtime_active</code> 且指针与 ⑥ 一致。
+                R1 需 <code>runtime_awaiting_user</code> 且 <code>target_turn_id</code> 为当前待回复的 NPC 回合 id（可点「从 GET turns 填充」）。
             </p>
+            <div class="split-title">R1 · hints（§6.7）</div>
+            <div class="field-row" style="align-items:center;flex-wrap:wrap;gap:8px;">
+                <label for="in-hint-target-turn-id" style="margin:0;">target_turn_id</label>
+                <input
+                    type="text"
+                    id="in-hint-target-turn-id"
+                    placeholder="UUID，可先点填充"
+                    style="flex:1;min-width:180px;font-family:monospace;font-size:12px;"
+                />
+                <button id="btn-hint-fill-target" type="button">从 GET turns 填充</button>
+            </div>
+            <div class="toolbar" style="margin-top:8px;">
+                <button id="btn-post-hint" type="button">POST hints（生成）</button>
+                <button id="btn-get-hint-latest" type="button">GET hints/latest</button>
+            </div>
+            <div class="split-title" style="margin-top:14px;">R2 · analytics（§6.8）</div>
+            <div class="toolbar">
+                <button id="btn-post-analytics" type="button">POST analytics（生成本节复盘）</button>
+                <button id="btn-get-analytics" type="button">GET analytics（最新成功）</button>
+            </div>
+            <div class="split-title">⑦ 最近一次 R1/R2 响应</div>
+            <pre class="output" id="out-r1r2"><span class="placeholder">调用 hints 或 analytics 后显示 JSON；204 也会显示说明</span></pre>
         </section>
 
         <section class="card">
