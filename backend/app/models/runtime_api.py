@@ -25,6 +25,43 @@ class StoryFrameworkBrief(BaseModel):
     chapters: list[StoryFrameworkBriefChapter]
 
 
+class PostUserTurnRequest(BaseModel):
+    """POST .../sections/{ch}/{sec}/turns 请求体（API §4.5）。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    content: str = Field(default="", max_length=8000)
+    recipient_id: str = Field(min_length=1, max_length=64)
+
+
+class PostUserTurnResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    new_turns: list[dict[str, Any]]
+    runtime_awaiting_user: bool
+
+
+class SectionTurnsListResponse(BaseModel):
+    """GET .../sections/{ch}/{sec}/turns 200（API §4.4）。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    scenario_id: str
+    chapter_id: int
+    section_id: int
+    turns: list[dict[str, Any]]
+
+
+class AutoOpenerRetryResponse(BaseModel):
+    """POST .../auto-opener 200（API §4.3）。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    turn: dict[str, Any]
+    turns: list[dict[str, Any]]
+    runtime_awaiting_user: bool
+
+
 class RuntimeResponse(BaseModel):
     """GET .../runtime 200。"""
 

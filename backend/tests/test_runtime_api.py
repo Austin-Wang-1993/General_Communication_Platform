@@ -41,6 +41,22 @@ def rt_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
                 "turn_writer": "model_npc",
             }
 
+        async def generate_dialogue_npc_reply_json(self, *, payload, repair_hint=None, temperature=0.55):
+            sid = str(payload["scenario_id"])
+            sp = str(payload["allowed_npc_speaker_ids"][0])
+            return {
+                "scenario_id": sid,
+                "chapter_id": int(payload["chapter_id"]),
+                "section_id": int(payload["section_id"]),
+                "turn_id": "00000000-0000-0000-0000-000000000002",
+                "created_at": "2020-01-01T00:00:01Z",
+                "speaker_id": sp,
+                "recipient_id": "user",
+                "content": "NPC reply here. " * 10,
+                "expects_user_response": True,
+                "turn_writer": "model_npc",
+            }
+
     config_module._settings = None  # type: ignore[attr-defined]
     deps_module._build_package_repo.cache_clear()
 
@@ -191,3 +207,68 @@ def test_enter_second_time_no_new_opener(rt_client: TestClient, tmp_path: Path) 
     assert e2.status_code == 200
     assert e2.json()["auto_opener_triggered"] is False
     assert len(e2.json()["turns"]) == 1
+
+
+def test_post_user_turn_after_opener(rt_client: TestClient, tmp_path: Path) -> None:
+    c = rt_client.post("/api/v1/scenario-packages", json={})
+    sid = c.json()["scenario_id"]
+    root = tmp_path / "data"
+    _write_minimal_runtime_tree(root, sid)
+    pkg_path = root / "scenarios" / sid / "package.json"
+    pdata = json.loads(pkg_path.read_text(encoding="utf-8"))
+    pdata["lifecycle_phase"] = "creation_succeeded"
+    pkg_path.write_text(json.dumps(pdata, ensure_ascii=False), encoding="utf-8")
+
+    rt_client.post(f"/api/v1/scenario-packages/{sid}/sections/1/1/enter", json={})
+
+    p = rt_client.post(
+        f"/api/v1/scenario-packages/{sid}/sections/1/1/turns",
+        json={"content": "User line here.", "recipient_id": "npc_a"},
+    )
+    assert p.status_code == 200, p.text
+    body = p.json()
+    assert len(body["new_turns"]) == 2
+    assert body["new_turns"][0]["speaker_id"] == "user"
+    assert body["new_turns"][0]["turn_writer"] == "human_user"
+    assert body["new_turns"][1]["turn_writer"] == "model_npc"
+    assert body["runtime_awaiting_user"] is True
+
+    g = rt_client.get(f"/api/v1/scenario-packages/{sid}/sections/1/1/turns?limit=1")
+    assert g.status_code == 200
+    assert len(g.json()["turns"]) == 1
+    assert g.json()["turns"][0]["speaker_id"] == "npc_a"
+
+
+def test_auto_opener_retry_when_empty(rt_client: TestClient, tmp_path: Path) -> None:
+    c = rt_client.post("/api/v1/scenario-packages", json={})
+    sid = c.json()["scenario_id"]
+    root = tmp_path / "data"
+    _write_minimal_runtime_tree(root, sid)
+    pkg_path = root / "scenarios" / sid / "package.json"
+    pdata = json.loads(pkg_path.read_text(encoding="utf-8"))
+    pdata["lifecycle_phase"] = "runtime_active"
+    pdata["current_chapter_id"] = 1
+    pdata["current_section_id"] = 1
+    pdata["runtime_awaiting_user"] = False
+    pkg_path.write_text(json.dumps(pdata, ensure_ascii=False), encoding="utf-8")
+
+    r = rt_client.post(f"/api/v1/scenario-packages/{sid}/sections/1/1/auto-opener", json={})
+    assert r.status_code == 200, r.text
+    assert len(r.json()["turns"]) == 1
+    assert r.json()["runtime_awaiting_user"] is True
+
+
+def test_auto_opener_retry_conflict_when_has_turns(rt_client: TestClient, tmp_path: Path) -> None:
+    c = rt_client.post("/api/v1/scenario-packages", json={})
+    sid = c.json()["scenario_id"]
+    root = tmp_path / "data"
+    _write_minimal_runtime_tree(root, sid)
+    pkg_path = root / "scenarios" / sid / "package.json"
+    pdata = json.loads(pkg_path.read_text(encoding="utf-8"))
+    pdata["lifecycle_phase"] = "creation_succeeded"
+    pkg_path.write_text(json.dumps(pdata, ensure_ascii=False), encoding="utf-8")
+
+    rt_client.post(f"/api/v1/scenario-packages/{sid}/sections/1/1/enter", json={})
+    r = rt_client.post(f"/api/v1/scenario-packages/{sid}/sections/1/1/auto-opener", json={})
+    assert r.status_code == 409
+    assert r.json()["error_code"] == "section_already_has_turns"

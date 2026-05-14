@@ -23,7 +23,14 @@ class TurnsRepo:
             / "turns.jsonl"
         )
 
-    async def read_all(self, scenario_id: str, chapter_id: int, section_id: int) -> list[dict[str, Any]]:
+    async def read_all(
+        self,
+        scenario_id: str,
+        chapter_id: int,
+        section_id: int,
+        *,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
         path = self.turns_path(scenario_id, chapter_id, section_id)
 
         def _read() -> list[dict[str, Any]]:
@@ -42,6 +49,8 @@ class TurnsRepo:
                     message="读取 turns.jsonl 失败",
                     details={"path": str(path), "error": str(e)},
                 ) from e
+            if limit is not None and limit > 0 and len(out) > limit:
+                return out[-limit:]
             return out
 
         return await asyncio.to_thread(_read)

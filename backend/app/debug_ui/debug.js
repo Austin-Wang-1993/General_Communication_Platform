@@ -441,6 +441,96 @@
     });
   }
 
-  // 暴露给后续阶段扩展使用
+  const btnPostTurn = document.getElementById('btn-post-turn');
+  const btnGetTurns = document.getElementById('btn-get-turns');
+  const btnAutoOpener = document.getElementById('btn-auto-opener');
+  const inTurnContent = document.getElementById('in-turn-content');
+  const inTurnRecipient = document.getElementById('in-turn-recipient');
+  const inTurnsLimit = document.getElementById('in-turns-limit');
+
+  if (btnPostTurn && outRuntime) {
+    btnPostTurn.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
+      const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
+      const content = (inTurnContent && inTurnContent.value) || '';
+      const recipient_id = (inTurnRecipient && inTurnRecipient.value) || '';
+      btnPostTurn.disabled = true;
+      try {
+        const result = await apiCall(
+          'POST',
+          `/scenario-packages/${selectedId}/sections/${ch}/${sec}/turns`,
+          { content, recipient_id },
+        );
+        renderResult(rawOut, result);
+        renderResult(outRuntime, result);
+        if (result.ok) {
+          await refreshList(true);
+          const titleEl = document.querySelector('#package-list li.selected .pkg-title');
+          const t = titleEl ? titleEl.textContent : '';
+          await loadDetail(selectedId, t);
+        }
+      } finally {
+        btnPostTurn.disabled = false;
+      }
+    });
+  }
+
+  if (btnGetTurns && outRuntime) {
+    btnGetTurns.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
+      const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
+      const limRaw = inTurnsLimit && inTurnsLimit.value;
+      const lim = limRaw ? parseInt(limRaw, 10) : null;
+      const q = lim && !Number.isNaN(lim) ? `?limit=${lim}` : '';
+      btnGetTurns.disabled = true;
+      try {
+        const result = await apiCall(
+          'GET',
+          `/scenario-packages/${selectedId}/sections/${ch}/${sec}/turns${q}`,
+        );
+        renderResult(rawOut, result);
+        renderResult(outRuntime, result);
+      } finally {
+        btnGetTurns.disabled = false;
+      }
+    });
+  }
+
+  if (btnAutoOpener && outRuntime) {
+    btnAutoOpener.addEventListener('click', async () => {
+      if (!selectedId) {
+        alert('请先在 ② 中点选一个场景包');
+        return;
+      }
+      const ch = parseInt((inEnterCh && inEnterCh.value) || '1', 10);
+      const sec = parseInt((inEnterSec && inEnterSec.value) || '1', 10);
+      btnAutoOpener.disabled = true;
+      try {
+        const result = await apiCall(
+          'POST',
+          `/scenario-packages/${selectedId}/sections/${ch}/${sec}/auto-opener`,
+          {},
+        );
+        renderResult(rawOut, result);
+        renderResult(outRuntime, result);
+        if (result.ok) {
+          await refreshList(true);
+          const titleEl = document.querySelector('#package-list li.selected .pkg-title');
+          const t = titleEl ? titleEl.textContent : '';
+          await loadDetail(selectedId, t);
+        }
+      } finally {
+        btnAutoOpener.disabled = false;
+      }
+    });
+  }
   window.GcpDebug = { apiCall, renderResult, refreshList };
 })();

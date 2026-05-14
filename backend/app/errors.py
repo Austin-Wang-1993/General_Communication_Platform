@@ -159,6 +159,30 @@ class AutoOpenerFailedError(GcpError):
     message = "本节自动开场失败"
 
 
+class RuntimeNotAwaitingUserError(GcpError):
+    http_status = 409
+    error_code = "runtime_not_awaiting_user"
+    message = "当前不在等待用户发言，无法发送或触发相关操作"
+
+
+class RecipientIdInvalidError(GcpError):
+    http_status = 422
+    error_code = "recipient_id_invalid"
+    message = "接收方 NPC 无效：须为本节 appearing_npc_ids 之一且不能为 user"
+
+
+class ContentEmptyOrTooLongError(GcpError):
+    http_status = 422
+    error_code = "content_empty_or_too_long"
+    message = "发言内容为空或超出长度限制"
+
+
+class SectionAlreadyHasTurnsError(GcpError):
+    http_status = 409
+    error_code = "section_already_has_turns"
+    message = "本节已有对话回合，无法再次自动开场"
+
+
 class LlmAuthenticationError(GcpError):
     """DeepSeek 返回 401/403：多为 API Key 错误、过期或环境变量含多余空白。"""
 

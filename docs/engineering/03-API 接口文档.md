@@ -1,6 +1,6 @@
 # API 接口文档
 
-> **文档版本**：v0.1.2  
+> **文档版本**：v0.1.3  
 > **更新时间**：2026-05-14  
 > **关联**：`../product/01-产品需求文档.md`、`../product/02-前端需求文档.md`、`01-技术方案.md`、`02-代码架构与目录约定.md`  
 > **本文是什么**：HTTP 接口的**完整契约**——每个接口的方法、路径、请求体、响应体、错误码、前置条件、PRD 字段映射、示例。  
@@ -76,7 +76,7 @@
 | 409 | `framework_already_exists` | 包内已有 framework；如需重置必须传 `force_reset_creation=true` | commit-intake |
 | 409 | `active_job_conflict` | 同包已有 `queued`/`running` 的 framework/world Job | `POST .../jobs/framework` / `POST .../jobs/world` |
 | 409 | `sections_already_exist` | 包内已有部分小节产物；如需重生成必须传 `force_regenerate=true` | jobs/world |
-| 409 | `runtime_not_awaiting_user` | 当前不在等待用户回复状态，不能发提示 | hints |
+| 409 | `runtime_not_awaiting_user` | 当前不在等待用户回复状态，不能发提示 / 用户回合 | hints、`POST .../turns` |
 | 409 | `section_already_has_turns` | 小节已有 turn，自动开场幂等返回 | auto-opener |
 | 409 | `section_no_turns_yet` | 小节尚无任何回合，无法触发本节复盘 | analytics |
 | 409 | `job_already_terminal` | 该 Job 已 `succeeded`/`failed`/`canceled`，无法取消 | cancel |
@@ -107,7 +107,7 @@
 
 ### 0.10 分页与排序
 
-**首版不分页**。`GET .../turns` 返回该小节全部回合（按时间升序）。如果一节回合数过多导致响应过大，由 §10.2 的"上下文裁剪"在 LLM 调用层解决；前端列表仍接收全量。
+**首版不分页**。`GET .../turns` 默认返回该小节全部回合（按时间升序）；可选查询参数 `limit` 返回**最近** N 条。如果一节回合数过多导致响应过大，由 §10.2 的"上下文裁剪"在 LLM 调用层解决；前端列表可接收全量或按需传 `limit`。
 
 ### 0.11 字段命名
 
@@ -131,7 +131,7 @@
 {
   "ok": true,
   "service": "gcp-backend",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "server_time": "2026-05-14T08:30:45Z",
   "data_dir_writable": true,
   "deepseek_configured": true

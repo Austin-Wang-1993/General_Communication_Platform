@@ -6,15 +6,15 @@
 
 ## 当前状态
 
-**`main` 已合并 M0~M5（部分）后端能力**：在 M4 基础上增加 **`GET .../runtime`** 与 **`POST .../sections/{ch}/{sec}/enter`**（含 §6.6.5 **自动开场** 写入 `turns.jsonl`）。**尚未实现**：用户发回合 `POST .../turns`、NPC 续聊、§4.3 `auto-opener` 重试接口等（仍属 M5 后续）。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（推荐 **`server-one-shot-sync.sh`**）。
+**本轮后端迭代（分支 `cursor/m5-post-turns-f7da`，合并进 `main` 前请在服务器测此分支）**：在 M5 首批基础上增加 **`GET/POST .../sections/{ch}/{sec}/turns`**（用户发言 + 同步一条 NPC 续聊）、**`POST .../auto-opener`**（显式自动开场重试）、`GET .../turns` 的 **`limit`** 查询参数。**尚未实现**：§6.6.4 全量规则（如多 NPC 连续链上限）、`POST .../hints` / 复盘等。服务器同步见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)（推荐 **`server-one-shot-sync.sh`**）。
 
-- 后端：FastAPI + `health` + `scenario-packages`（含 **runtime / enter**、前述 M1~M4 能力）
+- 后端：FastAPI + `health` + `scenario-packages`（含 **runtime / enter / turns / auto-opener**、前述 M1~M4 能力）
 - 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
 - 调试页：`backend/app/debug_ui/`（②~⑥，含进节与 runtime）
 - 部署：`deploy/`（含 **`server-one-shot-sync.sh`** 一键同步）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-**下一步**：补全 M5——`POST .../turns`（用户发言 + NPC 续聊）、`GET .../turns`、`POST .../auto-opener`，以及 §6.6.4 规则校验。
+**下一步**：补全 M5——§6.6.4 规则校验（多 NPC 链等）、`POST .../hints`、复盘与评估接口。
 
 ---
 
