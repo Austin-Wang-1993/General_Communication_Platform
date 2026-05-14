@@ -40,7 +40,7 @@ def _is_dir_writable(path) -> bool:
         return False
 
 
-@router.get("/health", response_model=HealthResponse, summary="健康检查（M0）")
+@router.get("/health", response_model=HealthResponse, summary="健康检查")
 async def health() -> HealthResponse:
     settings = get_settings()
     return HealthResponse(
