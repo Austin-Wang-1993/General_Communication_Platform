@@ -1,0 +1,4 @@
+业务钩子层占位目录。M6+ 起按 docs/engineering/02-代码架构与目录约定.md §3.3 填充：
+- useScenarioList / useCreateScenario / useDeleteScenario
+- useCommitIntake / useFrameworkJob / useWorldJob
+- useEnterSection / useSendMessage / useHint / useAnalytics / useChapterList

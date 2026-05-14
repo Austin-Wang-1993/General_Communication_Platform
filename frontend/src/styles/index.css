@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    /* 防止 iOS Safari 软键盘弹起时整页跳动 */
+    overscroll-behavior-y: contain;
+  }
+}
+
+@layer components {
+  /* M0 占位的卡片样式；后续在 components/common/ 里封装为正式组件 */
+  .card {
+    @apply rounded-lg border border-border-subtle bg-white p-4 shadow-sm;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-md bg-accent px-4 py-2.5
+           text-sm font-medium text-white transition
+           hover:bg-accent-hover active:bg-accent-hover
+           disabled:cursor-not-allowed disabled:opacity-50
+           min-h-[44px] min-w-[44px];
+  }
+}
