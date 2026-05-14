@@ -7,6 +7,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from app.clients.llm_client import LlmClient
 from app.errors import (
     ActiveJobConflictError,
@@ -262,6 +264,11 @@ class WorldJobService:
         vocab = analysis.get("normalized_vocabulary", [])
         if not isinstance(vocab, list):
             vocab = []
+        allowed_npc_list = sorted(
+            c.character_id for c in roster.character_roster.characters if not c.is_user
+        )
+        allowed_npc_set = set(allowed_npc_list)
+        npc_hint = ", ".join(allowed_npc_list)
 
         for idx, (ch, sec) in enumerate(pairs, start=1):
             j = await self.job_repo.load(scenario_id, job_id)
@@ -283,19 +290,69 @@ class WorldJobService:
                 "normalized_vocabulary": vocab,
             }
             raw_n = await self.llm.generate_section_narrative_json(payload=narrative_payload)
-            nar = self._validate_narrative(raw_n, scenario_id, ch.chapter_id, sec.section_id, roster)
+            nar, why = self._validate_narrative(
+                raw_n,
+                scenario_id,
+                ch.chapter_id,
+                sec.section_id,
+                allowed_npc_ids=allowed_npc_set,
+            )
             if nar is None:
+                logger.warning(
+                    "world narrative first pass invalid ch=%s sec=%s why=%s raw=%s",
+                    ch.chapter_id,
+                    sec.section_id,
+                    why,
+                    str(raw_n)[:800],
+                )
                 raw_n2 = await self.llm.generate_section_narrative_json(
                     payload=narrative_payload,
                     repair_hint=(
-                        "Return flat JSON with scenario_id, chapter_id, section_id, section_body (>=300 chars English), "
-                        "appearing_npc_ids length 1-2, NPC ids only from roster NPCs, never user."
+                        "Return a single FLAT JSON object (no markdown). Keys exactly: "
+                        "scenario_id, chapter_id, section_id, section_body, appearing_npc_ids. "
+                        "section_body: English, >=300 chars. "
+                        "appearing_npc_ids: length 1 or 2; use ONLY these roster NPC ids: "
+                        f"{npc_hint}. Never include user."
                     ),
                     temperature=0.35,
                 )
-                nar = self._validate_narrative(raw_n2, scenario_id, ch.chapter_id, sec.section_id, roster)
+                nar, why = self._validate_narrative(
+                    raw_n2,
+                    scenario_id,
+                    ch.chapter_id,
+                    sec.section_id,
+                    allowed_npc_ids=allowed_npc_set,
+                )
             if nar is None:
-                raise LlmFailureError(message=f"小节 ({ch.chapter_id},{sec.section_id}) narrative 校验失败")
+                raw_n3 = await self.llm.generate_section_narrative_json(
+                    payload=narrative_payload,
+                    repair_hint=(
+                        "Previous JSON failed schema. Output ONLY one JSON object. "
+                        f"Copy scenario_id exactly from input. chapter_id must be {ch.chapter_id}, "
+                        f"section_id must be {sec.section_id}. "
+                        f"appearing_npc_ids MUST use 1-2 ids from this list only: {npc_hint}. "
+                        "section_body: English narrative >=300 characters for THIS section's framework_section."
+                    ),
+                    temperature=0.2,
+                )
+                nar, why = self._validate_narrative(
+                    raw_n3,
+                    scenario_id,
+                    ch.chapter_id,
+                    sec.section_id,
+                    allowed_npc_ids=allowed_npc_set,
+                )
+            if nar is None:
+                hint = why or "unknown"
+                raise LlmFailureError(
+                    message=(
+                        f"小节 ({ch.chapter_id},{sec.section_id}) narrative 校验失败；原因：{hint}"
+                    )[:4000],
+                    details={
+                        "validation_hint": why,
+                        "allowed_npc_ids": allowed_npc_list,
+                    },
+                )
 
             base = self._section_dir(scenario_id, ch.chapter_id, sec.section_id)
             await write_json_atomic(base / "narrative.json", nar.model_dump(mode="json"))
@@ -317,16 +374,36 @@ class WorldJobService:
                 "enriched_user_goal": enriched_goal,
             }
             raw_m = await self.llm.generate_section_mission_json(payload=mission_payload)
-            miss = self._validate_mission(raw_m, scenario_id, ch.chapter_id, sec.section_id)
+            miss, m_why = self._validate_mission(raw_m, scenario_id, ch.chapter_id, sec.section_id)
             if miss is None:
                 raw_m2 = await self.llm.generate_section_mission_json(
                     payload=mission_payload,
-                    repair_hint="Return flat JSON with section_objective English 40-1200 chars aligned to narrative.",
+                    repair_hint=(
+                        "Single FLAT JSON object only. Keys exactly: scenario_id, chapter_id, section_id, "
+                        "section_objective. section_objective: English 40-1200 chars aligned to section_narrative."
+                    ),
                     temperature=0.35,
                 )
-                miss = self._validate_mission(raw_m2, scenario_id, ch.chapter_id, sec.section_id)
+                miss, m_why = self._validate_mission(raw_m2, scenario_id, ch.chapter_id, sec.section_id)
             if miss is None:
-                raise LlmFailureError(message=f"小节 ({ch.chapter_id},{sec.section_id}) mission 校验失败")
+                raw_m3 = await self.llm.generate_section_mission_json(
+                    payload=mission_payload,
+                    repair_hint=(
+                        "Schema failed. Output ONLY one JSON object. "
+                        f"scenario_id from input; chapter_id={ch.chapter_id}; section_id={sec.section_id}. "
+                        "section_objective: English 40-1200 chars, one clear learner task matching the narrative."
+                    ),
+                    temperature=0.2,
+                )
+                miss, m_why = self._validate_mission(raw_m3, scenario_id, ch.chapter_id, sec.section_id)
+            if miss is None:
+                mh = m_why or "unknown"
+                raise LlmFailureError(
+                    message=(
+                        f"小节 ({ch.chapter_id},{sec.section_id}) mission 校验失败；原因：{mh}"
+                    )[:4000],
+                    details={"validation_hint": m_why},
+                )
 
             await write_json_atomic(base / "mission.json", miss.model_dump(mode="json"))
 
@@ -361,26 +438,46 @@ class WorldJobService:
             / f"ch{chapter_id}_sec{section_id}"
         )
 
+    @staticmethod
+    def _unwrap_inner_dict(raw: object, inner_keys: tuple[str, ...]) -> dict[str, Any] | None:
+        """接受根级扁平 JSON，或误包在 `section_narrative` / `narrative` 等键下的对象。"""
+        if not isinstance(raw, dict):
+            return None
+        for k in inner_keys:
+            inner = raw.get(k)
+            if isinstance(inner, dict):
+                return dict(inner)
+        if len(raw) == 1:
+            lone = next(iter(raw.values()))
+            if isinstance(lone, dict):
+                return dict(lone)
+        return dict(raw)
+
     def _validate_narrative(
         self,
         raw: object,
         scenario_id: str,
         chapter_id: int,
         section_id: int,
-        roster: CharacterRosterFile,
-    ) -> SectionNarrativePayload | None:
-        if not isinstance(raw, dict):
-            return None
+        *,
+        allowed_npc_ids: set[str],
+    ) -> tuple[SectionNarrativePayload | None, str | None]:
+        d = self._unwrap_inner_dict(raw, ("section_narrative", "narrative"))
+        if d is None:
+            return None, "响应不是 JSON 对象"
+        d = dict(d)
+        # 以流水线上下文为准强制回显 id（减少模型抄错 chapter/section 导致整 Job 失败）
+        d["scenario_id"] = scenario_id
+        d["chapter_id"] = chapter_id
+        d["section_id"] = section_id
         try:
-            n = SectionNarrativePayload.model_validate(raw)
-        except Exception:
-            return None
-        if n.scenario_id != scenario_id or n.chapter_id != chapter_id or n.section_id != section_id:
-            return None
-        allowed = {c.character_id for c in roster.character_roster.characters if not c.is_user}
-        if not set(n.appearing_npc_ids).issubset(allowed):
-            return None
-        return n
+            n = SectionNarrativePayload.model_validate(d)
+        except ValidationError as e:
+            return None, self._format_validation_errors(e)
+        if not set(n.appearing_npc_ids).issubset(allowed_npc_ids):
+            bad = sorted(set(n.appearing_npc_ids) - allowed_npc_ids)
+            return None, f"appearing_npc_ids 含非法 id: {bad}"
+        return n, None
 
     def _validate_mission(
         self,
@@ -388,13 +485,25 @@ class WorldJobService:
         scenario_id: str,
         chapter_id: int,
         section_id: int,
-    ) -> SectionMissionPayload | None:
-        if not isinstance(raw, dict):
-            return None
+    ) -> tuple[SectionMissionPayload | None, str | None]:
+        d = self._unwrap_inner_dict(raw, ("section_mission", "mission"))
+        if d is None:
+            return None, "响应不是 JSON 对象"
+        d = dict(d)
+        d["scenario_id"] = scenario_id
+        d["chapter_id"] = chapter_id
+        d["section_id"] = section_id
         try:
-            m = SectionMissionPayload.model_validate(raw)
-        except Exception:
-            return None
-        if m.scenario_id != scenario_id or m.chapter_id != chapter_id or m.section_id != section_id:
-            return None
-        return m
+            m = SectionMissionPayload.model_validate(d)
+        except ValidationError as e:
+            return None, self._format_validation_errors(e)
+        return m, None
+
+    @staticmethod
+    def _format_validation_errors(e: ValidationError) -> str:
+        parts: list[str] = []
+        for err in e.errors()[:10]:
+            loc = ".".join(str(x) for x in err.get("loc", ()))
+            msg = str(err.get("msg", ""))
+            parts.append(f"{loc}: {msg}")
+        return "; ".join(parts)[:2000]
