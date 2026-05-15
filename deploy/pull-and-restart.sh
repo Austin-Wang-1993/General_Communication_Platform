@@ -113,27 +113,38 @@ else
     info "后端依赖无变动，跳过 pip install"
 fi
 
-# === 4. 依赖变动检测 + 前端构建 ===
+# === 4. 前端：按需 npm ci + 若缺产物则强制 npm run build ===
 AFTER_LOCK=""
 [ -f "${FRONTEND_DIR}/package-lock.json" ] && AFTER_LOCK=$(sha256sum "${FRONTEND_DIR}/package-lock.json" | awk '{print $1}')
 
+NEED_NPM_CI=0
+NEED_NPM_BUILD=0
+
 if [ ! -d "${FRONTEND_DIR}/node_modules" ]; then
-    warn "未发现 frontend/node_modules；首次安装"
-    (cd "${FRONTEND_DIR}" && npm ci)
-    NEED_BUILD=1
+    warn "未发现 frontend/node_modules；将执行 npm ci"
+    NEED_NPM_CI=1
+    NEED_NPM_BUILD=1
 elif [ "${SYNC_FULL}" = "1" ]; then
     info "GCP_SYNC_FULL=1：全量 npm ci"
-    (cd "${FRONTEND_DIR}" && npm ci)
-    NEED_BUILD=1
+    NEED_NPM_CI=1
+    NEED_NPM_BUILD=1
 elif [ -n "${AFTER_LOCK}" ] && [ "${BEFORE_LOCK}" != "${AFTER_LOCK}" ]; then
-    info "检测到 frontend/package-lock.json 变动，重装依赖"
-    (cd "${FRONTEND_DIR}" && npm ci)
-    NEED_BUILD=1
-else
-    NEED_BUILD=1
+    info "检测到 frontend/package-lock.json 变动，将执行 npm ci"
+    NEED_NPM_CI=1
+    NEED_NPM_BUILD=1
 fi
 
-if [ "${NEED_BUILD:-0}" = "1" ]; then
+if [ ! -f "${FRONTEND_DIR}/dist/index.html" ]; then
+    warn "未发现 ${FRONTEND_DIR}/dist/index.html（站点根路径会 403）；将执行 npm run build"
+    NEED_NPM_BUILD=1
+fi
+
+if [ "${NEED_NPM_CI}" = "1" ]; then
+    (cd "${FRONTEND_DIR}" && npm ci)
+    ok "frontend npm ci 完成"
+fi
+
+if [ "${NEED_NPM_BUILD}" = "1" ]; then
     info "前端构建中…"
     (cd "${FRONTEND_DIR}" && npm run build)
     ok "前端已构建到 ${FRONTEND_DIR}/dist"
