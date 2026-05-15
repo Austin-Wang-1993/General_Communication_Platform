@@ -1,5 +1,5 @@
 /**
- * P3 对话主界面：顶栏工具条（前端需求 §3.10 **F-P3-00**、F-P3-01～05）+ P3a 进节 + R1/R2 弹窗；气泡抬头用户/NPC 统一「发出方 → 接收方」（**F-P3-07**）。
+ * P3 对话主界面：顶栏工具条（前端需求 §3.10 **F-P3-00**、F-P3-01～05、F-P3-11**）+ P3a 进节 + R1/R2 弹窗；气泡抬头用户/NPC 统一「发出方 → 接收方」（**F-P3-07**）；NPC 气泡行内英译中（**F-P3-11**）。
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -12,6 +12,7 @@ import { ApiError } from '../services/apiClient';
 import { getRawJsonFile } from '../services/debugAssetsApi';
 import { postHint, postSectionAnalytics, getSectionAnalyticsLatest } from '../services/r1r2Api';
 import { enterSection, getRuntime, postUserTurn } from '../services/runtimeApi';
+import { postEnToZh } from '../services/translateApi';
 
 type RuntimeShape = {
   scenario_id?: string;
@@ -60,6 +61,8 @@ type AnalyticsShape = {
   generated_at?: string;
 };
 
+type NpcLineUi = 'en' | 'zh-loading' | 'zh';
+
 export function ChatPage() {
   const { scenarioId = '' } = useParams();
   const qc = useQueryClient();
@@ -80,6 +83,9 @@ export function ChatPage() {
   const [analyticsView, setAnalyticsView] = useState<AnalyticsShape | null>(null);
   const [lastGoodAnalytics, setLastGoodAnalytics] = useState<AnalyticsShape | null>(null);
 
+  const [npcLineUi, setNpcLineUi] = useState<Record<string, NpcLineUi>>({});
+  const [npcZhByTurn, setNpcZhByTurn] = useState<Record<string, string>>({});
+
   const [toast, setToast] = useState<string | null>(null);
   const didAttemptAutoEnter = useRef(false);
 
@@ -87,6 +93,33 @@ export function ChatPage() {
     setToast(msg);
     window.setTimeout(() => setToast(null), 3200);
   }, []);
+
+  const toggleNpcTranslate = useCallback(
+    async (turnKey: string, sourceEn: string, mode: NpcLineUi) => {
+      if (mode === 'zh') {
+        setNpcLineUi((m) => ({ ...m, [turnKey]: 'en' }));
+        return;
+      }
+      if (mode === 'zh-loading') {
+        return;
+      }
+      const text = sourceEn.trim();
+      if (!text) {
+        showToast('暂无可翻译正文');
+        return;
+      }
+      setNpcLineUi((m) => ({ ...m, [turnKey]: 'zh-loading' }));
+      try {
+        const { translated_text } = await postEnToZh(text);
+        setNpcZhByTurn((prev) => ({ ...prev, [turnKey]: translated_text }));
+        setNpcLineUi((m) => ({ ...m, [turnKey]: 'zh' }));
+      } catch (e: unknown) {
+        setNpcLineUi((m) => ({ ...m, [turnKey]: 'en' }));
+        showToast(errMsg(e));
+      }
+    },
+    [showToast],
+  );
 
   const rtQ = useQuery({
     queryKey: ['runtime', scenarioId],
@@ -115,6 +148,11 @@ export function ChatPage() {
 
   useEffect(() => {
     setLastGoodAnalytics(null);
+  }, [ch, sec, scenarioId]);
+
+  useEffect(() => {
+    setNpcLineUi({});
+    setNpcZhByTurn({});
   }, [ch, sec, scenarioId]);
 
   const nameById = useMemo(() => {
@@ -403,14 +441,36 @@ export function ChatPage() {
                 const isUser = t.speaker_id === 'user';
                 const speakerLabel = nameById.get(t.speaker_id || '') || t.speaker_id || '…';
                 const recipientLabel = nameById.get(t.recipient_id || '') || t.recipient_id || '…';
+                const turnKey = t.turn_id || `row-${i}`;
+                const lineMode = npcLineUi[turnKey] ?? 'en';
+                const sourceEn = t.content ?? '';
+                const bodyText =
+                  !isUser && lineMode === 'zh-loading'
+                    ? '翻译中…'
+                    : !isUser && lineMode === 'zh'
+                      ? npcZhByTurn[turnKey] ?? '…'
+                      : sourceEn;
                 return (
-                  <div key={t.turn_id || i} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  <div key={turnKey} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                     <div
                       className={[
-                        'max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm',
-                        isUser ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-amber-100 text-ink rounded-bl-md',
+                        'max-w-[85%] min-w-0 rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm',
+                        isUser
+                          ? 'bg-emerald-600 text-white rounded-br-md'
+                          : 'relative bg-amber-100 text-ink rounded-bl-md pr-10',
                       ].join(' ')}
                     >
+                      {!isUser && (
+                        <button
+                          type="button"
+                          className="absolute right-1.5 top-1.5 z-10 rounded border border-amber-300/80 bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-ink shadow-sm disabled:opacity-40"
+                          disabled={lineMode === 'zh-loading'}
+                          onClick={() => void toggleNpcTranslate(turnKey, sourceEn, lineMode)}
+                          aria-label={lineMode === 'zh' ? '显示原文' : '翻译成中文'}
+                        >
+                          {lineMode === 'zh' ? '原' : '翻'}
+                        </button>
+                      )}
                       <p
                         className={[
                           'text-[10px] mb-1',
@@ -419,7 +479,7 @@ export function ChatPage() {
                       >
                         {speakerLabel} → {recipientLabel}
                       </p>
-                      <p className="whitespace-pre-wrap">{t.content}</p>
+                      <p className="whitespace-pre-wrap break-words min-w-0">{bodyText}</p>
                     </div>
                   </div>
                 );

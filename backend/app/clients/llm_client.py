@@ -261,3 +261,19 @@ class LlmClient:
             user_content=user_content,
             temperature=temperature,
         )
+
+    async def translate_line_en_to_zh(self, *, source_text: str, temperature: float = 0.25) -> str:
+        """中台 §6.9：单行英→简中；返回清洗后的译文（非 JSON 对象）。"""
+        user_content = json.dumps({"source_text": source_text}, ensure_ascii=False)
+        raw = await self._chat_json_object(
+            system=load_prompt("translate_en_to_zh.md"),
+            user_content=user_content,
+            temperature=temperature,
+        )
+        s = raw.get("translated_text")
+        if not isinstance(s, str) or not s.strip():
+            raise LlmFailureError(
+                message="翻译模型返回无效",
+                details={"reason": "missing_or_empty_translated_text"},
+            )
+        return s.strip()

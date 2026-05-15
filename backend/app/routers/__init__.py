@@ -7,5 +7,6 @@
 - runtime.py            PRD §6.6 + §6.6.5 enter / turns / auto-opener（M5）
 - hints.py              PRD §6.7（M5.5）
 - debug_raw.py          §7.2 调试 raw-file（M6+）
+- translate.py          中台 §6.9 POST /translation/en-to-zh
 - analytics.py          PRD §6.8（M5.5）
 """
