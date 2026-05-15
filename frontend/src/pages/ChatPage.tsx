@@ -153,20 +153,56 @@ export function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, [scenarioId]);
 
+  const resolveSendPayload = useCallback(() => {
+    const fresh = qc.getQueryData(['runtime', scenarioId]) as RuntimeShape | undefined;
+    const curCh = fresh?.current_chapter_id ?? ch;
+    const curSec = fresh?.current_section_id ?? sec;
+    const allowed = fresh?.section_narrative?.appearing_npc_ids ?? appearing;
+    let rid = recipientId;
+    if (allowed.length && !allowed.includes(rid)) {
+      rid = allowed[0]!;
+    }
+    return { text: input.trim(), rid, curCh, curSec };
+  }, [qc, scenarioId, ch, sec, appearing, recipientId, input]);
+
   const sendM = useMutation({
     mutationFn: () => {
-      const fresh = qc.getQueryData(['runtime', scenarioId]) as RuntimeShape | undefined;
-      const curCh = fresh?.current_chapter_id ?? ch;
-      const curSec = fresh?.current_section_id ?? sec;
-      const allowed = fresh?.section_narrative?.appearing_npc_ids ?? appearing;
-      let rid = recipientId;
-      if (allowed.length && !allowed.includes(rid)) {
-        rid = allowed[0]!;
-      }
+      const { text, rid, curCh, curSec } = resolveSendPayload();
       return postUserTurn(scenarioId, curCh, curSec, {
-        content: input.trim(),
+        content: text,
         recipient_id: rid,
       });
+    },
+    onMutate: async () => {
+      const { text, rid } = resolveSendPayload();
+      if (!text) {
+        return {};
+      }
+      await qc.cancelQueries({ queryKey: ['runtime', scenarioId] });
+      const previous = qc.getQueryData(['runtime', scenarioId]) as RuntimeShape | undefined;
+      const optimisticId = `optimistic:${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+      qc.setQueryData(['runtime', scenarioId], (old: RuntimeShape | undefined) => {
+        if (!old) return old;
+        const row: TurnRow = {
+          turn_id: optimisticId,
+          speaker_id: 'user',
+          recipient_id: rid,
+          content: text,
+          expects_user_response: false,
+          turn_writer: 'human_user',
+        };
+        return {
+          ...old,
+          turns: [...(old.turns ?? []), row],
+          runtime_awaiting_user: false,
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) {
+        qc.setQueryData(['runtime', scenarioId], ctx.previous as RuntimeShape | undefined);
+      }
     },
     onSuccess: (data) => {
       setInput('');
@@ -175,6 +211,8 @@ export function ChatPage() {
         if (!old) return old;
         return mergeRuntimeAfterUserPost(old, res);
       });
+    },
+    onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['runtime', scenarioId] });
     },
   });
@@ -601,7 +639,7 @@ function mergeRuntimeAfterUserPost(
   res: { new_turns?: TurnRow[]; runtime_awaiting_user?: boolean },
 ): RuntimeShape {
   const incoming = res.new_turns ?? [];
-  const mergedTurns = [...(old.turns ?? [])];
+  const mergedTurns = (old.turns ?? []).filter((t) => !isOptimisticTurnId(t.turn_id));
   for (const t of incoming) {
     const id = t.turn_id;
     if (id) {
@@ -618,6 +656,10 @@ function mergeRuntimeAfterUserPost(
     turns: mergedTurns,
     runtime_awaiting_user: typeof ru === 'boolean' ? ru : Boolean(old.runtime_awaiting_user),
   };
+}
+
+function isOptimisticTurnId(id: unknown): boolean {
+  return typeof id === 'string' && id.startsWith('optimistic:');
 }
 
 function ModalShell(props: { title: string; children: ReactNode; onClose: () => void }) {
