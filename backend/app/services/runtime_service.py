@@ -48,6 +48,22 @@ from app.validators.turn_rules import validate_npc_turn_for_append, validate_use
 
 logger = logging.getLogger(__name__)
 
+# 写入 LLM 入参（非持久化）：与 `dialogue_npc_reply.md`、中台 §6.6.6（G）对齐，约束「拆条」与 `expects_user_response` 语义。
+NPC_DIALOGUE_RESPONSE_CONTRACT_GUIDE: dict[str, Any] = {
+    "expect_recipient_reply_semantics": [
+        "Field name is expects_user_response (server schema). When recipient_id is \"user\": "
+        "set expects_user_response=true only if the learner must speak next after this line; "
+        "set false if this line only wraps up to the learner and the narrative continues with more "
+        "npc_turn entries in the same batch (NPC-to-NPC or another NPC line) before asking the learner again.",
+        "When recipient_id is an NPC (NPC-to-NPC): expects_user_response MUST be false. "
+        "If the story requires that NPC to answer next, add the next array element with speaker_id equal to that recipient_id.",
+        "If an NPC first finishes addressing the learner then must address another on-stage NPC, "
+        "that MUST be two npc_turn objects (different recipient_id), never one combined speech.",
+        "End the batch with recipient_id user and expects_user_response=true so the session waits for the learner "
+        "(except single-NPC sections where the batch length is 1 and that line already does so).",
+    ],
+}
+
 _ALLOWED_READ = frozenset({LifecyclePhase.CREATION_SUCCEEDED, LifecyclePhase.RUNTIME_ACTIVE})
 _RUNTIME_POST_TURNS = frozenset({LifecyclePhase.RUNTIME_ACTIVE})
 
@@ -463,6 +479,7 @@ class RuntimeService:
                 "prior_turns": mid_turns,
                 "user_turn": user_d,
                 "allowed_npc_speaker_ids": sorted(allowed_speakers),
+                "response_contract_guide": NPC_DIALOGUE_RESPONSE_CONTRACT_GUIDE,
             }
             try:
                 raw_npc = await self.llm.generate_dialogue_npc_reply_json(payload=npc_payload)
@@ -691,6 +708,7 @@ class RuntimeService:
     def _dialogue_npc_repair_hint(allowed_speakers: set[str]) -> str:
         ids = ", ".join(sorted(allowed_speakers))
         return (
+            "Follow input.response_contract_guide for split turns and expects_user_response rules. "
             "Return JSON with root key npc_turns: array of 1 to 3 objects. "
             "Each object MUST have keys: speaker_id, recipient_id, content, expects_user_response, turn_writer (model_npc). "
             f"speaker_id and recipient_id (when not user) MUST be chosen ONLY from: {ids} and user. "
