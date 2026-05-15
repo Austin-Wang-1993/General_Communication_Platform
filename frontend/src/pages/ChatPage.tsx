@@ -1,5 +1,5 @@
 /**
- * P3 对话主界面：顶栏工具条（前端需求 §3.10 **F-P3-00**、F-P3-01～05、F-P3-11**）+ P3a 进节 + R1/R2 弹窗；气泡抬头用户/NPC 统一「发出方 → 接收方」（**F-P3-07**）；NPC 气泡行内英译中（**F-P3-11**）。
+ * P3 对话主界面：顶栏工具条（§3.10 **F-P3-00**、F-P3-01～05、**F-P3-11**、**F-P3-12**）+ P3a 进节 + R1/R2 弹窗；气泡抬头 **F-P3-07**；NPC 气泡与三工具弹窗行内英译中（**F-P3-11 / F-P3-12**，中台 **§6.9**）。
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -63,6 +63,57 @@ type AnalyticsShape = {
 
 type NpcLineUi = 'en' | 'zh-loading' | 'zh';
 
+const MODAL_SRC_JOIN = '\n\n---\n\n';
+
+function buildBgModalSourceEn(rt: RuntimeShape): string {
+  const parts: string[] = [];
+  const nar = (rt.section_narrative?.section_body ?? '').trim();
+  const obj = (rt.section_mission?.section_objective ?? '').trim();
+  if (nar) parts.push(`Section narrative\n\n${nar}`);
+  if (obj) parts.push(`Mission\n\n${obj}`);
+  for (const id of rt.section_narrative?.appearing_npc_ids ?? []) {
+    const info = rt.character_roster?.characters?.find((c) => c.character_id === id);
+    const name = info?.name ?? id;
+    const role = (info?.role ?? '').trim();
+    let block = `${name} (${id})`;
+    if (role) block += `\n${role}`;
+    parts.push(`Character\n\n${block}`);
+  }
+  return parts.join(MODAL_SRC_JOIN);
+}
+
+function buildHintModalSourceEn(h: HintShape | null): string {
+  if (!h) return '';
+  if (h.hint_status === 'stale') return '';
+  const parts: string[] = [];
+  const md = (h.analysis_markdown ?? '').trim();
+  if (h.hint_status === 'ready') {
+    if (md) parts.push(`Analysis\n\n${md}`);
+    const utt = (h.suggested_utterances ?? []).map((u) => u.trim()).filter(Boolean);
+    if (utt.length) parts.push(`Suggested phrases\n\n${utt.join('\n\n')}`);
+  } else if (h.hint_status === 'failed') {
+    if (md) parts.push(md);
+  }
+  return parts.join(MODAL_SRC_JOIN);
+}
+
+function buildAnalyticsModalSourceEn(p: {
+  loading: boolean;
+  view: AnalyticsShape | null;
+  lastGood: AnalyticsShape | null;
+  err: string | null;
+}): string {
+  if (p.loading) return '';
+  const readyMd =
+    p.view?.section_analytics_status === 'ready' ? (p.view.holistic_feedback_markdown ?? '').trim() : '';
+  if (readyMd) return readyMd;
+  const fb = (p.lastGood?.holistic_feedback_markdown ?? '').trim();
+  if (!fb) return '';
+  if (p.view?.section_analytics_status === 'failed') return fb;
+  if (p.err && !p.view?.holistic_feedback_markdown) return fb;
+  return '';
+}
+
 export function ChatPage() {
   const { scenarioId = '' } = useParams();
   const qc = useQueryClient();
@@ -85,6 +136,13 @@ export function ChatPage() {
 
   const [npcLineUi, setNpcLineUi] = useState<Record<string, NpcLineUi>>({});
   const [npcZhByTurn, setNpcZhByTurn] = useState<Record<string, string>>({});
+
+  const [bgModalTr, setBgModalTr] = useState<NpcLineUi>('en');
+  const [bgModalZh, setBgModalZh] = useState('');
+  const [hintModalTr, setHintModalTr] = useState<NpcLineUi>('en');
+  const [hintModalZh, setHintModalZh] = useState('');
+  const [analyticsModalTr, setAnalyticsModalTr] = useState<NpcLineUi>('en');
+  const [analyticsModalZh, setAnalyticsModalZh] = useState('');
 
   const [toast, setToast] = useState<string | null>(null);
   const didAttemptAutoEnter = useRef(false);
@@ -121,6 +179,40 @@ export function ChatPage() {
     [showToast],
   );
 
+  const translateToolModal = useCallback(
+    async (
+      mode: NpcLineUi,
+      sourceEn: string,
+      setMode: (m: NpcLineUi) => void,
+      setZh: (z: string) => void,
+    ) => {
+      if (mode === 'zh') {
+        setMode('en');
+        return;
+      }
+      if (mode === 'zh-loading') return;
+      const text = sourceEn.trim();
+      if (!text) {
+        showToast('暂无可翻译正文');
+        return;
+      }
+      if (text.length > 8000) {
+        showToast('内容超过 8000 字，暂无法一次性翻译');
+        return;
+      }
+      setMode('zh-loading');
+      try {
+        const { translated_text } = await postEnToZh(text);
+        setZh(translated_text);
+        setMode('zh');
+      } catch (e: unknown) {
+        setMode('en');
+        showToast(errMsg(e));
+      }
+    },
+    [showToast],
+  );
+
   const rtQ = useQuery({
     queryKey: ['runtime', scenarioId],
     queryFn: () => getRuntime(scenarioId) as Promise<RuntimeShape>,
@@ -145,6 +237,54 @@ export function ChatPage() {
   const sec = rt?.current_section_id ?? 1;
   const turns = rt?.turns ?? [];
   const appearing = rt?.section_narrative?.appearing_npc_ids ?? [];
+
+  const bgSourceEn = useMemo(() => (bgOpen && rt ? buildBgModalSourceEn(rt) : ''), [bgOpen, rt]);
+  const hintSourceEn = useMemo(
+    () => (hintOpen && hintBody ? buildHintModalSourceEn(hintBody) : ''),
+    [hintOpen, hintBody],
+  );
+  const analyticsSourceEn = useMemo(
+    () =>
+      analyticsOpen
+        ? buildAnalyticsModalSourceEn({
+            loading: analyticsLoading,
+            view: analyticsView,
+            lastGood: lastGoodAnalytics,
+            err: analyticsErr,
+          })
+        : '',
+    [analyticsOpen, analyticsLoading, analyticsView, lastGoodAnalytics, analyticsErr],
+  );
+
+  useEffect(() => {
+    if (!bgOpen) {
+      setBgModalTr('en');
+      setBgModalZh('');
+      return;
+    }
+    setBgModalTr('en');
+    setBgModalZh('');
+  }, [bgOpen, bgSourceEn]);
+
+  useEffect(() => {
+    if (!hintOpen) {
+      setHintModalTr('en');
+      setHintModalZh('');
+      return;
+    }
+    setHintModalTr('en');
+    setHintModalZh('');
+  }, [hintOpen, hintSourceEn]);
+
+  useEffect(() => {
+    if (!analyticsOpen) {
+      setAnalyticsModalTr('en');
+      setAnalyticsModalZh('');
+      return;
+    }
+    setAnalyticsModalTr('en');
+    setAnalyticsModalZh('');
+  }, [analyticsOpen, analyticsSourceEn]);
 
   useEffect(() => {
     setLastGoodAnalytics(null);
@@ -523,42 +663,87 @@ export function ChatPage() {
 
       {/* 背景介绍 */}
       {bgOpen && rt && (
-        <ModalShell title="背景介绍" onClose={() => setBgOpen(false)}>
-          <div className="space-y-3 text-sm text-ink">
-            <section>
-              <h4 className="text-xs font-semibold text-ink-soft uppercase tracking-wide">本节叙事</h4>
-              <p className="mt-1 whitespace-pre-wrap leading-relaxed">{rt.section_narrative?.section_body ?? '—'}</p>
-            </section>
-            <section>
-              <h4 className="text-xs font-semibold text-ink-soft uppercase tracking-wide">目标任务</h4>
-              <p className="mt-1 whitespace-pre-wrap leading-relaxed">{rt.section_mission?.section_objective ?? '—'}</p>
-            </section>
-            <section>
-              <h4 className="text-xs font-semibold text-ink-soft uppercase tracking-wide">出场角色</h4>
-              <ul className="mt-1 space-y-2">
-                {(rt.section_narrative?.appearing_npc_ids ?? []).map((id) => {
-                  const chInfo = rt.character_roster?.characters?.find((c) => c.character_id === id);
-                  return (
-                    <li key={id} className="rounded-md border border-border-subtle bg-white px-3 py-2 text-xs">
-                      <span className="font-medium">{chInfo?.name ?? id}</span>
-                      <span className="text-ink-soft font-mono ml-1">({id})</span>
-                      {chInfo?.role && <p className="text-ink-soft mt-0.5">{chInfo.role}</p>}
-                    </li>
-                  );
-                })}
-              </ul>
-              {(rt.section_narrative?.appearing_npc_ids ?? []).length === 0 && <p className="text-xs text-ink-soft">—</p>}
-            </section>
-          </div>
+        <ModalShell
+          title="背景介绍"
+          onClose={() => setBgOpen(false)}
+          titleAccessory={
+            bgSourceEn.trim() ? (
+              <TranslateHeaderBtn
+                mode={bgModalTr}
+                onPress={() => void translateToolModal(bgModalTr, bgSourceEn, setBgModalTr, setBgModalZh)}
+              />
+            ) : undefined
+          }
+        >
+          {bgModalTr === 'zh-loading' ? (
+            <p className="text-sm text-ink-soft">翻译中…</p>
+          ) : bgModalTr === 'zh' ? (
+            <div className="text-sm text-ink whitespace-pre-wrap break-words leading-relaxed min-h-[120px]">
+              {bgModalZh}
+            </div>
+          ) : (
+            <div className="space-y-3 text-sm text-ink">
+              <section>
+                <h4 className="text-xs font-semibold text-ink-soft uppercase tracking-wide">本节叙事</h4>
+                <p className="mt-1 whitespace-pre-wrap leading-relaxed">{rt.section_narrative?.section_body ?? '—'}</p>
+              </section>
+              <section>
+                <h4 className="text-xs font-semibold text-ink-soft uppercase tracking-wide">目标任务</h4>
+                <p className="mt-1 whitespace-pre-wrap leading-relaxed">{rt.section_mission?.section_objective ?? '—'}</p>
+              </section>
+              <section>
+                <h4 className="text-xs font-semibold text-ink-soft uppercase tracking-wide">出场角色</h4>
+                <ul className="mt-1 space-y-2">
+                  {(rt.section_narrative?.appearing_npc_ids ?? []).map((id) => {
+                    const chInfo = rt.character_roster?.characters?.find((c) => c.character_id === id);
+                    return (
+                      <li key={id} className="rounded-md border border-border-subtle bg-white px-3 py-2 text-xs">
+                        <span className="font-medium">{chInfo?.name ?? id}</span>
+                        <span className="text-ink-soft font-mono ml-1">({id})</span>
+                        {chInfo?.role && <p className="text-ink-soft mt-0.5">{chInfo.role}</p>}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {(rt.section_narrative?.appearing_npc_ids ?? []).length === 0 && <p className="text-xs text-ink-soft">—</p>}
+              </section>
+            </div>
+          )}
         </ModalShell>
       )}
 
       {/* 回答提示 R1 */}
       {hintOpen && (
-        <ModalShell title="回答提示" onClose={() => setHintOpen(false)}>
+        <ModalShell
+          title="回答提示"
+          onClose={() => setHintOpen(false)}
+          titleAccessory={
+            !hintLoading && hintSourceEn.trim() ? (
+              <TranslateHeaderBtn
+                mode={hintModalTr}
+                onPress={() =>
+                  void translateToolModal(hintModalTr, hintSourceEn, setHintModalTr, setHintModalZh)
+                }
+              />
+            ) : undefined
+          }
+        >
           {hintLoading && <p className="text-sm text-ink-soft">生成中，请稍候…</p>}
           {hintErr && <p className="text-sm text-danger">{hintErr}</p>}
-          {hintBody && (
+          {!hintLoading && hintBody && hintModalTr === 'zh-loading' && (
+            <p className="text-sm text-ink-soft">翻译中…</p>
+          )}
+          {!hintLoading && hintBody && hintModalTr === 'zh' && (
+            <>
+              <div className="text-sm text-ink whitespace-pre-wrap break-words leading-relaxed min-h-[120px]">
+                {hintModalZh}
+              </div>
+              {hintBody.generated_at && (
+                <p className="text-[10px] text-ink-soft font-mono mt-2">生成时间：{hintBody.generated_at}</p>
+              )}
+            </>
+          )}
+          {!hintLoading && hintBody && hintModalTr === 'en' && (
             <div className="space-y-3 text-sm">
               {hintBody.hint_status === 'stale' && (
                 <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-2 py-1">
@@ -597,32 +782,65 @@ export function ChatPage() {
 
       {/* 总结分析 R2 */}
       {analyticsOpen && (
-        <ModalShell title="总结分析" onClose={() => setAnalyticsOpen(false)}>
-          {analyticsLoading && <p className="text-sm text-ink-soft">正在生成中，请稍后</p>}
-          {analyticsErr && <p className="text-sm text-danger">{analyticsErr}</p>}
-          {analyticsView?.section_analytics_status === 'ready' && analyticsView.holistic_feedback_markdown && (
-            <div className="whitespace-pre-wrap text-ink leading-relaxed border border-border-subtle rounded-lg p-3 bg-white text-sm">
-              {analyticsView.holistic_feedback_markdown}
-            </div>
-          )}
-          {analyticsView?.section_analytics_status === 'failed' && lastGoodAnalytics?.holistic_feedback_markdown && (
-            <div className="mt-3 space-y-1">
-              <p className="text-xs text-ink-soft">上一份成功复盘：</p>
-              <div className="whitespace-pre-wrap text-ink leading-relaxed border border-border-subtle rounded-lg p-3 bg-white text-sm">
-                {lastGoodAnalytics.holistic_feedback_markdown}
+        <ModalShell
+          title="总结分析"
+          onClose={() => setAnalyticsOpen(false)}
+          titleAccessory={
+            analyticsSourceEn.trim() && !analyticsLoading ? (
+              <TranslateHeaderBtn
+                mode={analyticsModalTr}
+                onPress={() =>
+                  void translateToolModal(
+                    analyticsModalTr,
+                    analyticsSourceEn,
+                    setAnalyticsModalTr,
+                    setAnalyticsModalZh,
+                  )
+                }
+              />
+            ) : undefined
+          }
+        >
+          {analyticsModalTr === 'zh-loading' ? (
+            <p className="text-sm text-ink-soft">翻译中…</p>
+          ) : analyticsModalTr === 'zh' ? (
+            <>
+              <div className="whitespace-pre-wrap text-ink leading-relaxed border border-border-subtle rounded-lg p-3 bg-white text-sm min-h-[120px] break-words">
+                {analyticsModalZh}
               </div>
-            </div>
-          )}
-          {!analyticsLoading &&
-            analyticsErr &&
-            !analyticsView &&
-            lastGoodAnalytics?.holistic_feedback_markdown && (
-              <div className="mt-2 whitespace-pre-wrap text-ink leading-relaxed border border-border-subtle rounded-lg p-3 bg-white text-sm">
-                {lastGoodAnalytics.holistic_feedback_markdown}
-              </div>
-            )}
-          {analyticsView?.generated_at && (
-            <p className="text-[10px] text-ink-soft font-mono mt-2">生成时间：{analyticsView.generated_at}</p>
+              {analyticsView?.generated_at && (
+                <p className="text-[10px] text-ink-soft font-mono mt-2">生成时间：{analyticsView.generated_at}</p>
+              )}
+            </>
+          ) : (
+            <>
+              {analyticsLoading && <p className="text-sm text-ink-soft">正在生成中，请稍后</p>}
+              {analyticsErr && <p className="text-sm text-danger">{analyticsErr}</p>}
+              {analyticsView?.section_analytics_status === 'ready' && analyticsView.holistic_feedback_markdown && (
+                <div className="whitespace-pre-wrap text-ink leading-relaxed border border-border-subtle rounded-lg p-3 bg-white text-sm break-words">
+                  {analyticsView.holistic_feedback_markdown}
+                </div>
+              )}
+              {analyticsView?.section_analytics_status === 'failed' && lastGoodAnalytics?.holistic_feedback_markdown && (
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs text-ink-soft">上一份成功复盘：</p>
+                  <div className="whitespace-pre-wrap text-ink leading-relaxed border border-border-subtle rounded-lg p-3 bg-white text-sm break-words">
+                    {lastGoodAnalytics.holistic_feedback_markdown}
+                  </div>
+                </div>
+              )}
+              {!analyticsLoading &&
+                analyticsErr &&
+                !analyticsView &&
+                lastGoodAnalytics?.holistic_feedback_markdown && (
+                  <div className="mt-2 whitespace-pre-wrap text-ink leading-relaxed border border-border-subtle rounded-lg p-3 bg-white text-sm break-words">
+                    {lastGoodAnalytics.holistic_feedback_markdown}
+                  </div>
+                )}
+              {analyticsView?.generated_at && (
+                <p className="text-[10px] text-ink-soft font-mono mt-2">生成时间：{analyticsView.generated_at}</p>
+              )}
+            </>
           )}
         </ModalShell>
       )}
@@ -722,8 +940,22 @@ function isOptimisticTurnId(id: unknown): boolean {
   return typeof id === 'string' && id.startsWith('optimistic:');
 }
 
-function ModalShell(props: { title: string; children: ReactNode; onClose: () => void }) {
-  const { title, children, onClose } = props;
+function TranslateHeaderBtn(props: { mode: NpcLineUi; onPress: () => void }) {
+  return (
+    <button
+      type="button"
+      className="shrink-0 rounded border border-border-subtle bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold text-ink shadow-sm disabled:opacity-40"
+      disabled={props.mode === 'zh-loading'}
+      onClick={() => void props.onPress()}
+      aria-label={props.mode === 'zh' ? '显示原文' : '翻译成中文'}
+    >
+      {props.mode === 'zh' ? '原' : '翻'}
+    </button>
+  );
+}
+
+function ModalShell(props: { title: string; children: ReactNode; onClose: () => void; titleAccessory?: ReactNode }) {
+  const { title, children, onClose, titleAccessory } = props;
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/45 p-0 sm:p-4"
@@ -739,13 +971,16 @@ function ModalShell(props: { title: string; children: ReactNode; onClose: () => 
         className="bg-paper w-full max-w-lg max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center px-4 py-3 border-b border-border-subtle shrink-0">
-          <h2 className="text-sm font-semibold text-ink">{title}</h2>
-          <button type="button" className="text-xs text-ink-soft px-2 py-1" onClick={onClose}>
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border-subtle shrink-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
+            <h2 className="text-sm font-semibold text-ink truncate">{title}</h2>
+            {titleAccessory}
+          </div>
+          <button type="button" className="text-xs text-ink-soft px-2 py-1 shrink-0" onClick={onClose}>
             关闭
           </button>
         </div>
-        <div className="px-4 py-3 overflow-y-auto text-left">{children}</div>
+        <div className="px-4 py-3 overflow-y-auto text-left min-w-0">{children}</div>
       </div>
     </div>
   );
