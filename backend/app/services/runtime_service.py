@@ -450,7 +450,6 @@ class RuntimeService:
             await self.hints_repo.mark_stale_if_ready(scenario_id, chapter_id, section_id)
 
             mid_turns = turns_before + [user_d]
-            awaiting_after_user = self._awaiting_from_turns(mid_turns)
 
             allowed_speakers = set(narrative.appearing_npc_ids)
             npc_payload: dict[str, Any] = {
@@ -466,42 +465,74 @@ class RuntimeService:
             }
             try:
                 raw_npc = await self.llm.generate_dialogue_npc_reply_json(payload=npc_payload)
-                npc_rec = self._parse_npc_reply_turn(
-                    raw_npc,
-                    scenario_id,
-                    chapter_id,
-                    section_id,
-                    allowed_speakers=allowed_speakers,
-                )
-                if npc_rec is None:
-                    raw2 = await self.llm.generate_dialogue_npc_reply_json(
-                        payload=npc_payload,
-                        repair_hint=(
-                            "Return ONE flat JSON turn: speaker_id must be one of allowed_npc_speaker_ids; "
-                            "recipient_id user; expects_user_response true; turn_writer model_npc; "
-                            "content English 1-8000 chars."
-                        ),
-                        temperature=0.35,
-                    )
-                    npc_rec = self._parse_npc_reply_turn(
-                        raw2,
+                npc_records = self._clip_single_npc_section_batch(
+                    self._parse_npc_reply_turns(
+                        raw_npc,
                         scenario_id,
                         chapter_id,
                         section_id,
                         allowed_speakers=allowed_speakers,
-                    )
-                if npc_rec is None:
-                    raise LlmFailureError(message="NPC 续聊 JSON 校验失败")
-                npc_d = npc_rec.model_dump(mode="json")
-                validate_npc_turn_for_append(
-                    npc_d,
-                    current_chapter_id=chapter_id,
-                    current_section_id=section_id,
-                    runtime_awaiting_user=awaiting_after_user,
-                    prior_turns=mid_turns,
-                    appearing_npc_ids=narrative.appearing_npc_ids,
+                    ),
+                    allowed_speakers,
                 )
-                await self.turns_repo.append(scenario_id, chapter_id, section_id, npc_d)
+                if not npc_records:
+                    raw2 = await self.llm.generate_dialogue_npc_reply_json(
+                        payload=npc_payload,
+                        repair_hint=self._dialogue_npc_repair_hint(allowed_speakers),
+                        temperature=0.35,
+                    )
+                    npc_records = self._clip_single_npc_section_batch(
+                        self._parse_npc_reply_turns(
+                            raw2,
+                            scenario_id,
+                            chapter_id,
+                            section_id,
+                            allowed_speakers=allowed_speakers,
+                        ),
+                        allowed_speakers,
+                    )
+                if not npc_records:
+                    raise LlmFailureError(message="NPC 续聊 JSON 校验失败")
+                try:
+                    self._validate_npc_record_batch(
+                        npc_records,
+                        chapter_id=chapter_id,
+                        section_id=section_id,
+                        baseline_turns=mid_turns,
+                        appearing_npc_ids=narrative.appearing_npc_ids,
+                    )
+                except (InvalidTurnError, NpcNpcChainTooLongError):
+                    raw3 = await self.llm.generate_dialogue_npc_reply_json(
+                        payload=npc_payload,
+                        repair_hint=self._dialogue_npc_repair_hint(allowed_speakers),
+                        temperature=0.25,
+                    )
+                    npc_records = self._clip_single_npc_section_batch(
+                        self._parse_npc_reply_turns(
+                            raw3,
+                            scenario_id,
+                            chapter_id,
+                            section_id,
+                            allowed_speakers=allowed_speakers,
+                        ),
+                        allowed_speakers,
+                    )
+                    if not npc_records:
+                        raise LlmFailureError(message="NPC 续聊 JSON 校验失败")
+                    self._validate_npc_record_batch(
+                        npc_records,
+                        chapter_id=chapter_id,
+                        section_id=section_id,
+                        baseline_turns=mid_turns,
+                        appearing_npc_ids=narrative.appearing_npc_ids,
+                    )
+                for rec in npc_records:
+                    await self.turns_repo.append(
+                        scenario_id,
+                        chapter_id,
+                        section_id,
+                        rec.model_dump(mode="json"),
+                    )
             except LlmFailureError:
                 pkg.runtime_awaiting_user = False
                 pkg.updated_at = utc_now_rfc3339()
@@ -512,7 +543,8 @@ class RuntimeService:
             pkg.runtime_awaiting_user = self._awaiting_from_turns(all_turns)
             pkg.updated_at = utc_now_rfc3339()
             await self.package_repo.save(pkg)
-            new_turns = [user_d, all_turns[-1]]
+            k = len(npc_records)
+            new_turns = [user_d] + all_turns[-k:]
             awaiting = bool(pkg.runtime_awaiting_user)
 
         return PostUserTurnResponse(new_turns=new_turns, runtime_awaiting_user=awaiting)
@@ -578,7 +610,63 @@ class RuntimeService:
             runtime_awaiting_user=True,
         )
 
-    def _parse_npc_reply_turn(
+    @staticmethod
+    def _clip_single_npc_section_batch(
+        records: list[TurnRecord],
+        allowed_speakers: set[str],
+    ) -> list[TurnRecord]:
+        if len(allowed_speakers) == 1 and len(records) > 1:
+            return records[:1]
+        return records
+
+    @staticmethod
+    def _dialogue_npc_repair_hint(allowed_speakers: set[str]) -> str:
+        ids = ", ".join(sorted(allowed_speakers))
+        return (
+            "Return JSON with root key npc_turns: array of 1 to 3 objects. "
+            "Each object MUST have keys: speaker_id, recipient_id, content, expects_user_response, turn_writer (model_npc). "
+            f"speaker_id and recipient_id (when not user) MUST be chosen ONLY from: {ids} and user. "
+            "speaker_id must never be user. speaker_id and recipient_id must differ. "
+            "Each content addresses ONLY that object's recipient — no 'UserName, ... Mark, ...' in one line; split into separate objects. "
+            "Do NOT invent on-stage characters not in appearing_npc_ids from input section_narrative. "
+            "For NPC-to-NPC lines set recipient_id to the other NPC and expects_user_response false. "
+            "The LAST object in npc_turns MUST have recipient_id user and expects_user_response true so the learner can reply. "
+            "If only one NPC is on stage, npc_turns length MUST be 1."
+        )
+
+    @staticmethod
+    def _npc_turn_dicts_from_llm(raw: object) -> list[dict[str, Any]]:
+        if not isinstance(raw, dict):
+            return []
+        nt = raw.get("npc_turns")
+        if isinstance(nt, list) and nt:
+            return [dict(x) for x in nt if isinstance(x, dict)][:3]
+        return [dict(raw)]
+
+    def _validate_npc_record_batch(
+        self,
+        records: list[TurnRecord],
+        *,
+        chapter_id: int,
+        section_id: int,
+        baseline_turns: list[dict[str, Any]],
+        appearing_npc_ids: list[str],
+    ) -> None:
+        prior = list(baseline_turns)
+        for rec in records:
+            rd = rec.model_dump(mode="json")
+            awaiting = self._awaiting_from_turns(prior)
+            validate_npc_turn_for_append(
+                rd,
+                current_chapter_id=chapter_id,
+                current_section_id=section_id,
+                runtime_awaiting_user=awaiting,
+                prior_turns=prior,
+                appearing_npc_ids=appearing_npc_ids,
+            )
+            prior.append(rd)
+
+    def _parse_npc_reply_turns(
         self,
         raw: object,
         scenario_id: str,
@@ -586,10 +674,31 @@ class RuntimeService:
         section_id: int,
         *,
         allowed_speakers: set[str],
+    ) -> list[TurnRecord]:
+        out: list[TurnRecord] = []
+        for d in self._npc_turn_dicts_from_llm(raw):
+            rec = self._parse_one_npc_dict_into_turn(
+                d,
+                scenario_id,
+                chapter_id,
+                section_id,
+                allowed_speakers=allowed_speakers,
+            )
+            if rec is None:
+                return []
+            out.append(rec)
+        return out
+
+    def _parse_one_npc_dict_into_turn(
+        self,
+        d_raw: dict[str, Any],
+        scenario_id: str,
+        chapter_id: int,
+        section_id: int,
+        *,
+        allowed_speakers: set[str],
     ) -> TurnRecord | None:
-        if not isinstance(raw, dict):
-            return None
-        d = dict(raw)
+        d = dict(d_raw)
         if "npc_turn" in d and isinstance(d["npc_turn"], dict):
             d = dict(d["npc_turn"])
         if "turn" in d and isinstance(d["turn"], dict):
@@ -597,17 +706,34 @@ class RuntimeService:
         sp = str(d.get("speaker_id", "")).strip()
         if sp not in allowed_speakers:
             sp = sorted(allowed_speakers)[0] if allowed_speakers else ""
+        rp = str(d.get("recipient_id", "user")).strip() or "user"
+        if rp != "user" and rp not in allowed_speakers:
+            rp = "user"
+        if sp == rp:
+            rp = "user"
+        exp_raw = d.get("expects_user_response", False)
+        if isinstance(exp_raw, bool):
+            exp = exp_raw
+        else:
+            exp = str(exp_raw).lower() in ("true", "1", "yes")
+        content = str(d.get("content", "")).strip()
+        if not content or len(content) > 8000:
+            return None
         now = utc_now_rfc3339()
-        d["scenario_id"] = scenario_id
-        d["chapter_id"] = chapter_id
-        d["section_id"] = section_id
-        d["turn_id"] = new_turn_id()
-        d["created_at"] = now
-        d["speaker_id"] = sp
-        d["recipient_id"] = "user"
-        d["expects_user_response"] = True
-        d["turn_writer"] = TurnWriter.MODEL_NPC.value
         try:
-            return TurnRecord.model_validate(d)
+            return TurnRecord.model_validate(
+                {
+                    "scenario_id": scenario_id,
+                    "chapter_id": chapter_id,
+                    "section_id": section_id,
+                    "turn_id": new_turn_id(),
+                    "created_at": now,
+                    "speaker_id": sp,
+                    "recipient_id": rp,
+                    "content": content,
+                    "expects_user_response": exp,
+                    "turn_writer": TurnWriter.MODEL_NPC,
+                }
+            )
         except ValidationError:
             return None

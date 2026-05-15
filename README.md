@@ -6,15 +6,15 @@
 
 ## 当前状态
 
-**`main` 为当前完整功能线**：含 M1~M4、M5 运行期与 R1/R2、调试页；**§6.6.4** 回合硬规则已在 **`validators/turn_rules.py`** 接入 `POST …/turns` 与自动开场落盘路径（规则 0/1/2/3/6/7 等；NPC 续聊仍固定为「对 user 发问」故规则 8 主要由生成策略保证）。服务器请同步 **`main`**：`bash deploy/server-one-shot-sync.sh 'main'`（见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)）。
+**`main` 为当前完整功能线**：含 M1~M4、M5 运行期与 R1/R2、调试页；**§6.6.4** 回合硬规则已在 **`validators/turn_rules.py`** 接入 `POST …/turns` 与自动开场落盘路径。双 NPC 小节中，`POST …/turns` 可一次同步落 **1～3** 条 NPC 续写（`npc_turns` 批处理，见 **PRD §6.6.6** 与技术方案 v0.3.9），仍须满足 NPC–NPC 连续上限与交回练习者等规则。服务器请同步 **`main`**：`bash deploy/server-one-shot-sync.sh 'main'`（见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)）。
 
-- 后端：FastAPI + `health` + `scenario-packages`（上述能力全集）
-- 前端：Vite + React + TS + Tailwind；**M6 进行中**：P1 欢迎页、P2 场景清单（含创建/删除/进入）、P2.1 五字段与 `commit-intake`、P2.2/P2.4 Job 轮询与取消、P3 简易运行态占位（`/scenarios/:id/chat`）；TanStack Query + `scenariosApi` / `runtimeApi`
+- 后端：FastAPI + `health` + `scenario-packages`（含 **`GET /api/v1/debug/raw-file`** 白名单 JSON，供前端 P2.3/P2.5 与调试页）
+- 前端：Vite + React + TS + Tailwind；**M6 进行中**：P1~P2.1（**五字段样例底纹**：浅灰斜体、「（样例）」、聚焦清空、未改则提交；示例含「约 4 章」联调提示）、创作三步 `CreationStepper`、P2.2/P2.4 Job 轮询（成功后自动进 **P2.3 框架预览** / **P2.5 世界预览**）、**P2.3** `/framework-preview`、**P2.5** `/world-preview`（按节展开叙事/目标/出场人物；底栏仅「返回首页」「直接开启对话」）、**P3** `/chat`（首入自动 `enter(S[0])`；**用户与 NPC 气泡**均展示「发出方 → 接收方」；一次 `POST turns` 若返回多条 NPC 续写按序展示；顶栏 **返回首页 / 背景介绍 / 回答提示 R1 / 总结分析 R2 / 查看列表**；底栏 **选择信息接收人** + `POST turns`；**P3a** 章节进节）；`debugAssetsApi` + `r1r2Api` + `scenariosApi` / `runtimeApi`
 - 调试页：`backend/app/debug_ui/`（②~⑧，含 **⑦** hints / analytics 操作区）
 - 部署：`deploy/`（含 **`server-one-shot-sync.sh`** 一键同步）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-**下一步**：M6 续作（P2.3 框架预览、P2.5 世界预览、P3 完整聊天与 P3a 切节等）或 §6.6.4 多段 NPC 续聊。
+**下一步**：M6 续作（打磨多方对话生成质量、P3 typing 与多气泡衔接体验等）与文档随版本迭代。
 
 ---
 
