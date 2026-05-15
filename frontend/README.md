@@ -25,11 +25,13 @@ npm run build   # 产物在 frontend/dist/，由 Nginx 直接挂载（见 deploy
 
 - **P1** `/`：欢迎页、「知道了」、顶栏「调试模式」→ `/debug/`
 - **P2** `/scenarios`：场景包列表、`POST` 新建、`DELETE`、底部动作表（进入 / 删除）
-- **P2.1** `/scenarios/:id/setup`：五字段 + `commit-intake`，成功后启动框架 Job 并跳转轮询页
-- **P2.2 / P2.4** `/scenarios/:id/jobs/:jobId/framework|world`：G10 文案轮询、`POST` 取消；框架完成后手动「下一步」启动世界 Job
-- **P3 占位** `/scenarios/:id/chat`：`GET runtime`、可选「进 1-1」、回合列表只读展示
+- **P2.1** `/scenarios/:id/setup`：五字段 + `commit-intake`，顶栏三步进度；可链到框架/世界预览
+- **P2.2 / P2.4** `/scenarios/:id/jobs/:jobId/framework|world`：轮询与取消；**成功后自动跳转** P2.3 或 P2.5 预览页
+- **P2.3** `/scenarios/:id/framework-preview`：`GET /debug/raw-file` 读 `framework.json` / `roster.json`，「下一步」启动世界 Job
+- **P2.5** `/scenarios/:id/world-preview`：按 framework 拉各节 `narrative.json` 摘要；返回列表 / 进对话
+- **P3** `/scenarios/:id/chat`：`GET runtime`、`POST enter`、`POST turns`；绿/黄气泡、收件人选择、章节列表（P3a）
 
-**待续**：P2.3 框架预览、P2.5 世界预览、P3 完整发送/气泡/G8 收件人、P3a 切节等（见 `docs/product/02-前端需求文档.md`）。
+**待续**：左手道具（R1/R2）、更完整的加载与错误态、世界重生成 `force_regenerate` 的显式 UI 等。
 
 ## 目录速览
 
@@ -37,7 +39,7 @@ npm run build   # 产物在 frontend/dist/，由 Nginx 直接挂载（见 deploy
 src/
 ├── main.tsx              入口：装配 Router + QueryClient
 ├── App.tsx               路由表
-├── pages/                ① 页面层（Welcome / Scenarios / Intake / JobWait / ChatPlaceholder）
+├── pages/                ① 页面层（Welcome / Scenarios / Intake / JobWait / FrameworkPreview / WorldPreview / Chat）
 ├── components/           ② 组件层（layout/AppHeader 等）
 ├── hooks/                ③ 业务钩子层（预留）
 ├── services/             ④ API：apiClient、healthApi、scenariosApi、runtimeApi

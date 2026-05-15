@@ -1,6 +1,6 @@
 # API 接口文档
 
-> **文档版本**：v0.1.6  
+> **文档版本**：v0.1.7  
 > **更新时间**：2026-05-14  
 > **关联**：`../product/01-产品需求文档.md`、`../product/02-前端需求文档.md`、`01-技术方案.md`、`02-代码架构与目录约定.md`  
 > **本文是什么**：HTTP 接口的**完整契约**——每个接口的方法、路径、请求体、响应体、错误码、前置条件、PRD 字段映射、示例。  
@@ -68,6 +68,7 @@
 |---|---|---|---|
 | 400 | `invalid_request_body` | 请求体不是合法 JSON 或缺少必填键 | 各接口 |
 | 404 | `scenario_not_found` | 场景包不存在或已被删除 | 几乎所有接口 |
+| 404 | `raw_file_not_found` | 白名单内路径对应文件不存在或 JSON 非法 | `GET .../debug/raw-file` |
 | 404 | `chapter_not_found` | `chapter_id` 不存在于本包 framework | 运行期 |
 | 404 | `section_not_found` | `section_id` 不存在于该章 | 运行期 |
 | 404 | `turn_not_found` | `turn_id` 不存在 | hint 接口 |
@@ -132,7 +133,7 @@
 {
   "ok": true,
   "service": "gcp-backend",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "server_time": "2026-05-14T08:30:45Z",
   "data_dir_writable": true,
   "deepseek_configured": true
@@ -1075,7 +1076,8 @@ PRD §6.6.3 字段一一映射：
 | P2a-01-03 删除成功 | `DELETE /scenario-packages/{id}` |
 | P2a-02-01「进入场景」 | `GET /scenario-packages/{id}` + `POST /sections/{ch}/{sec}/enter` |
 | P2.1-01-03「下一步」 | `POST /scenario-packages/{id}/commit-intake` + `POST /jobs/framework` |
-| P2.1-01-04「下一步」+G3 | `POST /commit-intake` with `force_reset_creation=true` |
+| P2.3 框架预览 | `GET /debug/raw-file`（`framework.json` / `roster.json`） |
+| P2.5 世界预览 | `GET /scenario-packages/{id}` + `GET /debug/raw-file`（各节 `narrative.json`） |
 | P2.2 轮询 | `GET /jobs/{job_id}` |
 | P2.2-01-01「取消」 | `POST /jobs/{job_id}/cancel` |
 | P2.3-02-01「下一步」 | `POST /jobs/world` |
@@ -1098,5 +1100,6 @@ PRD §6.6.3 字段一一映射：
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v0.1.7 | 2026-05-14 | 实现 §7.2 `GET /debug/raw-file`；错误码表新增 `raw_file_not_found`；健康检查示例版本号同步 |
 | v0.1.1 | 2026-05-14 | **交叉审阅修复**：① §3.1 `POST /jobs/framework` 前置条件细化：明确允许 `intake_committed` 状态下已有 framework 的"重生成"语义，与 PRD v0.5.2 §5.4 `intake_committed` 扩充语义对齐；② §3.2 `POST /jobs/world` 前置条件改为"已有 sections 时必须 `force_regenerate=true`"，去掉允许 `creation_running` 的歧义；③ §0.8 错误码总表加 `sections_already_exist`（HTTP 409） |
 | v0.1.0 | 2026-05-14 | 初稿：全部接口完整契约（请求/响应/错误码/PRD 映射/前端故事追溯） |

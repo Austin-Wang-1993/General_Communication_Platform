@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { CreationStepper } from '../components/CreationStepper';
 import { AppHeader } from '../components/layout/AppHeader';
 import { lifecyclePhaseLabel } from '../lib/lifecycle';
 import { ApiError } from '../services/apiClient';
@@ -14,10 +15,6 @@ import {
   getScenarioPackage,
   startFrameworkJob,
 } from '../services/scenariosApi';
-
-const TAB_CLASS = 'flex-1 rounded-md py-2 text-xs font-medium text-center';
-const TAB_ACTIVE = 'bg-white text-ink shadow-sm';
-const TAB_IDLE = 'text-ink-soft';
 
 export function IntakeWizardPage() {
   const { scenarioId = '' } = useParams();
@@ -134,15 +131,19 @@ export function IntakeWizardPage() {
     <div className="min-h-screen flex flex-col bg-paper pb-[max(96px,env(safe-area-inset-bottom))]">
       <AppHeader title="基本描述" backTo="/scenarios" />
 
-      <div className="px-3 pt-3 max-w-lg mx-auto w-full">
-        <div className="flex gap-1 rounded-lg bg-paper p-1 border border-border-subtle">
-          <div className={`${TAB_CLASS} ${TAB_ACTIVE}`}>基本描述</div>
-          <button type="button" className={`${TAB_CLASS} ${TAB_IDLE}`} onClick={() => setFormErr('请先完成当前步骤')}>
-            框架预览
-          </button>
-          <button type="button" className={`${TAB_CLASS} ${TAB_IDLE}`} onClick={() => setFormErr('请先完成当前步骤')}>
-            生成世界
-          </button>
+      <div className="px-3 pt-3 max-w-lg mx-auto w-full space-y-2">
+        <CreationStepper current={1} />
+        <div className="flex flex-wrap justify-end gap-x-3 gap-y-1 text-[11px]">
+          {pkg.assets.has_story_framework && (
+            <Link className="text-accent font-medium" to={`/scenarios/${scenarioId}/framework-preview`}>
+              查看框架预览
+            </Link>
+          )}
+          {pkg.assets.section_assets_complete && (
+            <Link className="text-accent font-medium" to={`/scenarios/${scenarioId}/world-preview`}>
+              查看世界预览
+            </Link>
+          )}
         </div>
       </div>
 

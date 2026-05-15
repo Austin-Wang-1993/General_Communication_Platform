@@ -33,6 +33,7 @@ pytest -q
 - **M3**：`POST .../jobs/framework` + `GET .../jobs/{job_id}`（异步生成 `framework.json` / `roster.json`）
 - **M4**：`POST .../jobs/world` + `POST .../jobs/{job_id}/cancel`（`sections/ch*_sec*/` 小节资产）
 - **M5**：运行期 `runtime` / `enter` / `turns` / `auto-opener`；R1 `hints`；R2 `analytics`；**§6.6.4** 经 `validators/turn_rules.py` 在写入前校验
+- **M6+**：`GET /api/v1/debug/raw-file`（§7.2 白名单只读 JSON，供 C 端预览页与调试）
 
 ## 目录速览
 
