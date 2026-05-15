@@ -1,7 +1,7 @@
 """FastAPI 应用入口。
 
 按 `docs/engineering/02-代码架构与目录约定.md` §2.7 后端目录全图组织。
-M0~M5：health、场景包 CRUD、commit-intake、framework/world Job、轮询与取消、运行期 runtime + 进节 enter + turns；R1：`.../hints`；R2：`.../analytics`。
+M0~M5：health、场景包 CRUD、commit-intake、framework/world Job、轮询与取消、运行期 runtime + 进节 enter + turns（§6.6.4 `turn_rules` 写入前校验）；R1：`.../hints`；R2：`.../analytics`。
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="GCP Backend",
-        description="通用英语对话练习 · 后端 API（M0~M5 + R1 hints + R2 analytics）",
+        description="通用英语对话练习 · 后端 API（M0~M5 + R1 hints + R2 analytics + §6.6.4 turn_rules）",
         version=__version__,
         lifespan=lifespan,
     )

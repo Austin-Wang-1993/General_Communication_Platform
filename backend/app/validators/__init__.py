@@ -4,7 +4,7 @@
 M1+ 加入：
 - identifiers.py     §5.2 字符串格式校验
 - lifecycle.py       §5.4 状态迁移合法性
-- turn_rules.py      §6.6.4 全 9 条规则
+- turn_rules.py      §6.6.4 回合硬规则（已接入运行期写入）
 - framework_rules.py §6.2.1 / §6.4.3 等
 - content_safety.py  §6.1.3
 """

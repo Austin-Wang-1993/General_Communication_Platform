@@ -183,6 +183,22 @@ class ContentEmptyOrTooLongError(GcpError):
     message = "发言内容为空或超出长度限制"
 
 
+class InvalidTurnError(GcpError):
+    """PRD §6.6.4：回合序列或字段违反硬规则（业务流程 `04-业务流程与状态机.md` §4）。"""
+
+    http_status = 422
+    error_code = "invalid_turn"
+    message = "回合违反 PRD §6.6.4 硬规则"
+
+
+class NpcNpcChainTooLongError(GcpError):
+    """§6.6.4 规则 7：尾部连续 NPC–NPC 再加一条将超出上限。"""
+
+    http_status = 422
+    error_code = "npc_npc_chain_too_long"
+    message = "连续 NPC–NPC 回合将超过上限（§6.6.4 规则 7）"
+
+
 class SectionAlreadyHasTurnsError(GcpError):
     http_status = 409
     error_code = "section_already_has_turns"

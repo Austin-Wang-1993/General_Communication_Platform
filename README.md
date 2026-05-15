@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-**`main` 为当前完整功能线**：含 M1~M4 场景包与创作 Job、M5 运行期 **runtime / enter / turns / auto-opener**、**R1**（`POST/GET .../hints`，`hint_latest.json`）、**R2**（`POST/GET .../analytics`，`analytics.json`），以及调试页 **⑥**（NPC 单选收件人）与 **⑦**（R1/R2 调试按钮）、`apiCall` 对 **204** 空体的解析。**尚未实现**：§6.6.4 全量链式规则等。服务器请同步 **`main`**：`bash deploy/server-one-shot-sync.sh 'main'`（见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)）。
+**`main` 为当前完整功能线**：含 M1~M4、M5 运行期与 R1/R2、调试页；**§6.6.4** 回合硬规则已在 **`validators/turn_rules.py`** 接入 `POST …/turns` 与自动开场落盘路径（规则 0/1/2/3/6/7 等；NPC 续聊仍固定为「对 user 发问」故规则 8 主要由生成策略保证）。服务器请同步 **`main`**：`bash deploy/server-one-shot-sync.sh 'main'`（见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)）。
 
 - 后端：FastAPI + `health` + `scenario-packages`（上述能力全集）
 - 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
@@ -14,7 +14,7 @@
 - 部署：`deploy/`（含 **`server-one-shot-sync.sh`** 一键同步）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-**下一步**：§6.6.4 规则校验等。
+**下一步**：C 端 M6~M9（P1~P3a）或继续收紧 §6.6.4（多段 NPC 续聊、规则 8 生成侧强制等）。
 
 ---
 
@@ -85,8 +85,8 @@
 | M2 | 五字段录入 + DeepSeek 扩写 | ✅ 已合并 main |
 | M3 | 框架 + 角色 Job | ✅ 已合并 main |
 | M4 | 全书小节 Job + 取消清库 | ✅ 已合并 main |
-| M5 | 聊天 + 自动开场 | 进行中（§4.1 runtime、§4.2 enter 已合并；对话 turns 待续） |
-| M5.5 | R1 提示 + R2 复盘 | 待开始 |
+| M5 | 聊天 + 自动开场 + §6.6.4 写入前校验 | ✅ 已合并 main |
+| M5.5 | R1 提示 + R2 复盘 | ✅ 已合并 main |
 | M6 ~ M9 | C 端前端 P1~P3a 全部页面 | 待开始 |
 
 详见 [技术方案 §9](docs/engineering/01-技术方案.md)。

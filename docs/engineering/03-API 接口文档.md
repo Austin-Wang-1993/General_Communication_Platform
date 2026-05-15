@@ -1,6 +1,6 @@
 # API 接口文档
 
-> **文档版本**：v0.1.5  
+> **文档版本**：v0.1.6  
 > **更新时间**：2026-05-14  
 > **关联**：`../product/01-产品需求文档.md`、`../product/02-前端需求文档.md`、`01-技术方案.md`、`02-代码架构与目录约定.md`  
 > **本文是什么**：HTTP 接口的**完整契约**——每个接口的方法、路径、请求体、响应体、错误码、前置条件、PRD 字段映射、示例。  
@@ -84,6 +84,7 @@
 | 422 | `intake_field_too_long` | 字段超长 | commit-intake |
 | 422 | `intake_unrelated_topic` | `scene_brief` 与 `user_goal_brief` 主题完全无关 | commit-intake（业务校验） |
 | 422 | `display_name_invalid` | 含控制字符或修剪后空 | 任何含显示名的接口 |
+| 422 | `invalid_turn` | 违反 PRD §6.6.4 回合硬规则（如指针不一致、NPC 回合在等待用户期间写入等） | `POST .../turns`、自动开场落盘前 |
 | 422 | `recipient_id_invalid` | `recipient_id` 不在当前节 `appearing_npc_ids` 中 | turns |
 | 422 | `content_empty_or_too_long` | `content` 长度 < 1 或 > 8000 | turns |
 | 422 | `pointer_target_invalid` | enter 目标 `(ch, sec)` 不存在 | enter |
@@ -131,7 +132,7 @@
 {
   "ok": true,
   "service": "gcp-backend",
-  "version": "0.6.3",
+  "version": "0.6.5",
   "server_time": "2026-05-14T08:30:45Z",
   "data_dir_writable": true,
   "deepseek_configured": true

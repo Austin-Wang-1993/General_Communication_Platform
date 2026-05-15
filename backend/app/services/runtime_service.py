@@ -12,8 +12,10 @@ from app.errors import (
     AutoOpenerFailedError,
     ChapterNotFoundError,
     ContentEmptyOrTooLongError,
+    InvalidTurnError,
     LifecyclePhaseError,
     LlmFailureError,
+    NpcNpcChainTooLongError,
     RecipientIdInvalidError,
     RuntimeNotAwaitingUserError,
     ScenarioNotFoundError,
@@ -41,6 +43,7 @@ from app.repositories.hints_repo import HintsRepo
 from app.repositories.package_repo import PackageRepo
 from app.repositories.roster_repo import RosterRepo
 from app.repositories.turns_repo import TurnsRepo
+from app.validators.turn_rules import validate_npc_turn_for_append, validate_user_turn_for_append
 
 logger = logging.getLogger(__name__)
 
@@ -227,12 +230,22 @@ class RuntimeService:
                         roster=roster,
                     )
                     turn_d = turn.model_dump(mode="json")
+                    validate_npc_turn_for_append(
+                        turn_d,
+                        current_chapter_id=chapter_id,
+                        current_section_id=section_id,
+                        runtime_awaiting_user=self._awaiting_from_turns([]),
+                        prior_turns=[],
+                        appearing_npc_ids=narrative.appearing_npc_ids,
+                    )
                     await self.turns_repo.append(scenario_id, chapter_id, section_id, turn_d)
                     turns = await self.turns_repo.read_all(scenario_id, chapter_id, section_id)
                     pkg.runtime_awaiting_user = True
                     auto_triggered = True
                     opener_tid = turn.turn_id
                     await self.package_repo.save(pkg)
+                except (InvalidTurnError, NpcNpcChainTooLongError):
+                    raise
                 except (LlmFailureError, ValidationError) as e:
                     logger.warning("auto opener failed: %s", e)
                     pkg.runtime_awaiting_user = False
@@ -389,8 +402,6 @@ class RuntimeService:
                         "requested_section_id": section_id,
                     },
                 )
-            if not pkg.runtime_awaiting_user:
-                raise RuntimeNotAwaitingUserError()
 
             fw_raw = await self.framework_repo.load_raw(scenario_id)
             if not isinstance(fw_raw, dict):
@@ -408,15 +419,7 @@ class RuntimeService:
                 )
 
             turns_before = await self.turns_repo.read_all(scenario_id, chapter_id, section_id)
-            if not turns_before:
-                raise RuntimeNotAwaitingUserError(
-                    details={"reason": "no_turns_yet_use_enter_or_auto_opener"},
-                )
-            last = turns_before[-1]
-            if not last.get("expects_user_response"):
-                raise RuntimeNotAwaitingUserError(
-                    details={"reason": "last_turn_not_expecting_user"},
-                )
+            awaiting = self._awaiting_from_turns(turns_before)
 
             now = utc_now_rfc3339()
             user_turn = TurnRecord(
@@ -432,8 +435,22 @@ class RuntimeService:
                 turn_writer=TurnWriter.HUMAN_USER,
             )
             user_d = user_turn.model_dump(mode="json")
+            validate_user_turn_for_append(
+                user_d,
+                current_chapter_id=chapter_id,
+                current_section_id=section_id,
+                runtime_awaiting_user=awaiting,
+                prior_turns=turns_before,
+                appearing_npc_ids=narrative.appearing_npc_ids,
+            )
             await self.turns_repo.append(scenario_id, chapter_id, section_id, user_d)
+            pkg.runtime_awaiting_user = False
+            pkg.updated_at = utc_now_rfc3339()
+            await self.package_repo.save(pkg)
             await self.hints_repo.mark_stale_if_ready(scenario_id, chapter_id, section_id)
+
+            mid_turns = turns_before + [user_d]
+            awaiting_after_user = self._awaiting_from_turns(mid_turns)
 
             allowed_speakers = set(narrative.appearing_npc_ids)
             npc_payload: dict[str, Any] = {
@@ -443,7 +460,7 @@ class RuntimeService:
                 "section_narrative": narrative.model_dump(mode="json"),
                 "section_mission": mission.model_dump(mode="json"),
                 "character_roster": roster.character_roster.model_dump(mode="json"),
-                "prior_turns": turns_before + [user_d],
+                "prior_turns": mid_turns,
                 "user_turn": user_d,
                 "allowed_npc_speaker_ids": sorted(allowed_speakers),
             }
@@ -476,6 +493,14 @@ class RuntimeService:
                 if npc_rec is None:
                     raise LlmFailureError(message="NPC 续聊 JSON 校验失败")
                 npc_d = npc_rec.model_dump(mode="json")
+                validate_npc_turn_for_append(
+                    npc_d,
+                    current_chapter_id=chapter_id,
+                    current_section_id=section_id,
+                    runtime_awaiting_user=awaiting_after_user,
+                    prior_turns=mid_turns,
+                    appearing_npc_ids=narrative.appearing_npc_ids,
+                )
                 await self.turns_repo.append(scenario_id, chapter_id, section_id, npc_d)
             except LlmFailureError:
                 pkg.runtime_awaiting_user = False
@@ -533,6 +558,14 @@ class RuntimeService:
                 roster=roster,
             )
             turn_d = turn.model_dump(mode="json")
+            validate_npc_turn_for_append(
+                turn_d,
+                current_chapter_id=chapter_id,
+                current_section_id=section_id,
+                runtime_awaiting_user=self._awaiting_from_turns([]),
+                prior_turns=[],
+                appearing_npc_ids=narrative.appearing_npc_ids,
+            )
             await self.turns_repo.append(scenario_id, chapter_id, section_id, turn_d)
             all_turns = await self.turns_repo.read_all(scenario_id, chapter_id, section_id)
             pkg.runtime_awaiting_user = True
