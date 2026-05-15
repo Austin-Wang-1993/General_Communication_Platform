@@ -1,5 +1,5 @@
 /**
- * P3 对话主界面：顶栏工具条（前端需求 §3.10 **F-P3-00**、F-P3-01～05）+ P3a 进节 + R1/R2 弹窗。
+ * P3 对话主界面：顶栏工具条（前端需求 §3.10 **F-P3-00**、F-P3-01～05）+ P3a 进节 + R1/R2 弹窗；气泡抬头用户/NPC 统一「发出方 → 接收方」（**F-P3-07**）。
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -359,16 +359,14 @@ export function ChatPage() {
                         isUser ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-amber-100 text-ink rounded-bl-md',
                       ].join(' ')}
                     >
-                      {!isUser && (
-                        <p className="text-[10px] opacity-80 mb-1">
-                          {speakerLabel}
-                        </p>
-                      )}
-                      {isUser && (
-                        <p className="text-[10px] text-emerald-100/90 mb-1 text-right">
-                          {speakerLabel} → {recipientLabel}
-                        </p>
-                      )}
+                      <p
+                        className={[
+                          'text-[10px] mb-1',
+                          isUser ? 'text-emerald-100/90 text-right' : 'text-ink/70 text-left',
+                        ].join(' ')}
+                      >
+                        {speakerLabel} → {recipientLabel}
+                      </p>
                       <p className="whitespace-pre-wrap">{t.content}</p>
                     </div>
                   </div>
