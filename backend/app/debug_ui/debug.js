@@ -16,16 +16,14 @@
 
   /** 通用 fetch 封装：处理 JSON 响应与错误 */
   async function apiCall(method, path, body) {
-    const opts = {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-    };
+    const opts = { method };
     if (body !== undefined) {
+      opts.headers = { 'Content-Type': 'application/json' };
       opts.body = JSON.stringify(body);
     }
     const url = API_BASE + path;
     const start = performance.now();
-    let response, payload;
+    let response;
     try {
       response = await fetch(url, opts);
     } catch (e) {
@@ -80,6 +78,18 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+  }
+
+  /** 将 apiCall 失败结果压缩为一行，便于列表区 / alert 展示 */
+  function formatApiErrorSummary(result) {
+    if (result.kind === 'network') {
+      return result.message || '网络错误';
+    }
+    const p = result.payload;
+    if (p && typeof p === 'object' && p.error_code) {
+      return String(result.status) + ' ' + String(p.error_code);
+    }
+    return String(result.status);
   }
 
   /** ⑥ 发送回合：收件人单选（来自本节 appearing_npc_ids + roster 显示名） */
@@ -175,36 +185,50 @@
   }
 
   async function refreshList(preserveSelected = false) {
-    listEl.innerHTML = '<li class="placeholder">加载中…</li>';
-    const result = await apiCall('GET', '/scenario-packages');
-    renderResult(rawOut, result);
-    if (!result.ok) {
-      listEl.innerHTML = '<li class="placeholder">加载失败，看下方原始响应</li>';
-      return;
-    }
-    const packages = (result.payload && result.payload.packages) || [];
-    if (packages.length === 0) {
-      listEl.innerHTML = '<li class="placeholder">无场景包；点"新建空包"创建一个</li>';
-      setSelected(null, null);
-      detailOut.innerHTML = '<span class="placeholder">在左侧点选某个场景包查看其 package.json</span>';
-      return;
-    }
-    listEl.innerHTML = '';
-    let stillSelected = false;
-    for (const p of packages) {
-      const li = document.createElement('li');
-      li.dataset.id = p.scenario_id;
-      const title = p.scenario_title || '(空标题)';
-      li.innerHTML =
-        `<div class="pkg-title">${escapeHtml(title)}</div>` +
-        `<div class="pkg-meta">${escapeHtml(p.scenario_id.slice(0, 8))}… · ${escapeHtml(p.lifecycle_phase)} · ${escapeHtml(p.updated_at)}</div>`;
-      li.addEventListener('click', () => loadDetail(p.scenario_id, title));
-      listEl.appendChild(li);
-      if (preserveSelected && p.scenario_id === selectedId) stillSelected = true;
-    }
-    if (!preserveSelected || !stillSelected) {
-      setSelected(null, null);
-      detailOut.innerHTML = '<span class="placeholder">在左侧点选某个场景包查看其 package.json</span>';
+    try {
+      listEl.innerHTML = '<li class="placeholder">加载中…</li>';
+      const result = await apiCall('GET', '/scenario-packages');
+      renderResult(rawOut, result);
+      if (!result.ok) {
+        const summary = formatApiErrorSummary(result);
+        listEl.innerHTML =
+          '<li class="placeholder status-err">加载失败：' +
+          escapeHtml(summary) +
+          '（请展开下方「最近 API 响应」）</li>';
+        return;
+      }
+      const packages = (result.payload && result.payload.packages) || [];
+      if (packages.length === 0) {
+        listEl.innerHTML = '<li class="placeholder">无场景包；点"新建空包"创建一个</li>';
+        setSelected(null, null);
+        detailOut.innerHTML = '<span class="placeholder">在左侧点选某个场景包查看其 package.json</span>';
+        return;
+      }
+      listEl.innerHTML = '';
+      let stillSelected = false;
+      for (const p of packages) {
+        const li = document.createElement('li');
+        li.dataset.id = p.scenario_id;
+        const title = p.scenario_title || '(空标题)';
+        li.innerHTML =
+          `<div class="pkg-title">${escapeHtml(title)}</div>` +
+          `<div class="pkg-meta">${escapeHtml(p.scenario_id.slice(0, 8))}… · ${escapeHtml(p.lifecycle_phase)} · ${escapeHtml(p.updated_at)}</div>`;
+        li.addEventListener('click', () => loadDetail(p.scenario_id, title));
+        listEl.appendChild(li);
+        if (preserveSelected && p.scenario_id === selectedId) stillSelected = true;
+      }
+      if (!preserveSelected || !stillSelected) {
+        setSelected(null, null);
+        detailOut.innerHTML = '<span class="placeholder">在左侧点选某个场景包查看其 package.json</span>';
+      }
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      listEl.innerHTML =
+        '<li class="placeholder status-err">页面脚本异常：' + escapeHtml(msg) + '</li>';
+      if (rawOut) {
+        rawOut.innerHTML =
+          '<span class="status-err">异常</span>\n' + escapeHtml(msg);
+      }
     }
   }
 
@@ -225,12 +249,22 @@
     try {
       const result = await apiCall('POST', '/scenario-packages', {});
       renderResult(rawOut, result);
-      if (!result.ok) return;
+      if (!result.ok) {
+        alert(
+          '新建场景包失败：' +
+            formatApiErrorSummary(result) +
+            '\n请展开「最近 API 响应」查看完整 JSON。',
+        );
+        return;
+      }
       await refreshList(false);
       // 自动选中新建的那个
       if (result.payload && result.payload.scenario_id) {
         await loadDetail(result.payload.scenario_id, result.payload.scenario_title || '(空标题)');
       }
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      alert('新建场景包异常：' + msg);
     } finally {
       createBtn.disabled = false;
     }
