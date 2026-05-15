@@ -29,7 +29,7 @@ npm run build   # 产物在 frontend/dist/，由 Nginx 直接挂载（见 deploy
 - **P2.2 / P2.4** `/scenarios/:id/jobs/:jobId/framework|world`：轮询与取消；**成功后自动跳转** P2.3 或 P2.5 预览页
 - **P2.3** `/scenarios/:id/framework-preview`：`GET /debug/raw-file` 读 `framework.json` / `roster.json`，「下一步」启动世界 Job
 - **P2.5** `/scenarios/:id/world-preview`：按 framework 拉各节 `narrative.json` 摘要；返回列表 / 进对话
-- **P3** `/scenarios/:id/chat`：`GET runtime`、`POST enter`、`POST turns`；绿/黄气泡、收件人选择、章节列表（P3a）
+- **P3** `/scenarios/:id/chat`：`GET runtime`、`POST enter`、`POST turns`；顶栏 **返回首页 / 背景介绍 / 回答提示（R1）/ 总结分析（R2）/ 查看列表**；气泡、**选择信息接收人**、P3a 进节
 
 **待续**：左手道具（R1/R2）、更完整的加载与错误态、世界重生成 `force_regenerate` 的显式 UI 等。
 
