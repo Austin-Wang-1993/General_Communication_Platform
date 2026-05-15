@@ -139,6 +139,26 @@ if [ "${NEED_BUILD:-0}" = "1" ]; then
     ok "前端已构建到 ${FRONTEND_DIR}/dist"
 fi
 
+# === 4.1 静态站点权限与产物自检（Nginx 常见 403：www-data 无法进入 /opt/gcp 或读 dist）===
+_gcp_fix_frontend_dist_permissions() {
+    local d
+    for d in "${REPO_DIR}" "${FRONTEND_DIR}" "${FRONTEND_DIR}/dist"; do
+        if [ -d "$d" ]; then
+            chmod o+x "$d" 2>/dev/null || true
+        fi
+    done
+    if [ -d "${FRONTEND_DIR}/dist" ]; then
+        chmod -R a+rX "${FRONTEND_DIR}/dist" 2>/dev/null || true
+    fi
+}
+_gcp_fix_frontend_dist_permissions
+
+if [ ! -f "${FRONTEND_DIR}/dist/index.html" ]; then
+    err "前端产物缺失：${FRONTEND_DIR}/dist/index.html 不存在。请检查 npm run build 日志。"
+    exit 1
+fi
+ok "前端入口文件就绪：dist/index.html"
+
 # 判断 systemd 是否已识别某单元（比 list-unit-files | grep 更稳：无 root 时列表可能不全、
 # 或刚 cp 单元文件尚未 daemon-reload 导致「文件在磁盘但 list 里没有」）。
 _gcp_backend_unit_ready() {
@@ -199,6 +219,12 @@ if systemctl show nginx.service -p LoadState --value 2>/dev/null | grep -qx load
     info "reload Nginx"
     sudo systemctl reload nginx
     ok "Nginx 已 reload"
+    code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 8 http://127.0.0.1/ 2>/dev/null || echo "000")
+    if [ "$code" = "200" ]; then
+        ok "Nginx 本机 GET / → HTTP ${code}"
+    else
+        warn "Nginx 本机 GET / → HTTP ${code}（公网若 403：多为目录权限；已尝试 chmod o+x 仓库路径与 a+rX dist，仍失败请查 namei -lm ${FRONTEND_DIR}/dist/index.html）"
+    fi
 else
     warn "未检测到 nginx.service，已跳过 reload（若你未装 Nginx 可忽略）"
 fi
