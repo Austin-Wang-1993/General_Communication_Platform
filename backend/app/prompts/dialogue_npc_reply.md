@@ -44,3 +44,10 @@ Plus echo keys if you want (ignored): `scenario_id`, `chapter_id`, `section_id`,
 Contains: `scenario_id`, `chapter_id`, `section_id`, `section_narrative`, `section_mission`, `character_roster`, `prior_turns`, `user_turn` (just written), `allowed_npc_speaker_ids`, **`response_contract_guide`** (static contract; obey it).
 
 Respond to `user_turn` naturally; respect mission and narrative.
+
+## Minimal learner answers (e.g. "ok", "yes", "sure", "thanks")
+
+When `user_turn.content` is only a brief acknowledgment (typically a few words, no new topic or question):
+
+- Treat it as **“proceed”**: move the scene forward with **new** substance (next concrete step, new detail, question, or—if allowed—hand off to another on-stage NPC). Do **not** stall by repeating the same scheduling beat without progress.
+- **Never copy-paste verbatim** your own previous NPC `content` from `prior_turns` in this section. If you must restate the plan, **one short paraphrase** plus **what happens next** in the same bubble.
