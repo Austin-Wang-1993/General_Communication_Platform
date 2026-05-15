@@ -72,10 +72,10 @@ export async function apiRequest<TResponse = unknown>(
 
   const init: RequestInit = {
     method,
-    headers: { 'Content-Type': 'application/json' },
     signal: controller.signal,
   };
   if (options.body !== undefined) {
+    init.headers = { 'Content-Type': 'application/json' };
     init.body = JSON.stringify(options.body);
   }
 

@@ -1,9 +1,9 @@
 {
   "name": "gcp-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "通用英语对话练习 · 前端 SPA（M0 骨架）",
+  "description": "通用英语对话练习 · 前端 SPA（M6：P1/P2/P2.1/Job 轮询/P3 占位）",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

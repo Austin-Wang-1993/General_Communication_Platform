@@ -9,12 +9,12 @@
 **`main` 为当前完整功能线**：含 M1~M4、M5 运行期与 R1/R2、调试页；**§6.6.4** 回合硬规则已在 **`validators/turn_rules.py`** 接入 `POST …/turns` 与自动开场落盘路径（规则 0/1/2/3/6/7 等；NPC 续聊仍固定为「对 user 发问」故规则 8 主要由生成策略保证）。服务器请同步 **`main`**：`bash deploy/server-one-shot-sync.sh 'main'`（见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)）。
 
 - 后端：FastAPI + `health` + `scenario-packages`（上述能力全集）
-- 前端：Vite + React + TS + Tailwind + P1 欢迎页 + 健康检查按钮
+- 前端：Vite + React + TS + Tailwind；**M6 进行中**：P1 欢迎页、P2 场景清单（含创建/删除/进入）、P2.1 五字段与 `commit-intake`、P2.2/P2.4 Job 轮询与取消、P3 简易运行态占位（`/scenarios/:id/chat`）；TanStack Query + `scenariosApi` / `runtimeApi`
 - 调试页：`backend/app/debug_ui/`（②~⑧，含 **⑦** hints / analytics 操作区）
 - 部署：`deploy/`（含 **`server-one-shot-sync.sh`** 一键同步）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)
 
-**下一步**：C 端 M6~M9（P1~P3a）或继续收紧 §6.6.4（多段 NPC 续聊、规则 8 生成侧强制等）。
+**下一步**：M6 续作（P2.3 框架预览、P2.5 世界预览、P3 完整聊天与 P3a 切节等）或 §6.6.4 多段 NPC 续聊。
 
 ---
 
@@ -87,7 +87,7 @@
 | M4 | 全书小节 Job + 取消清库 | ✅ 已合并 main |
 | M5 | 聊天 + 自动开场 + §6.6.4 写入前校验 | ✅ 已合并 main |
 | M5.5 | R1 提示 + R2 复盘 | ✅ 已合并 main |
-| M6 ~ M9 | C 端前端 P1~P3a 全部页面 | 待开始 |
+| M6 ~ M9 | C 端前端 P1~P3a | **M6 部分已开工**（见上「前端」行） |
 
 详见 [技术方案 §9](docs/engineering/01-技术方案.md)。
 
