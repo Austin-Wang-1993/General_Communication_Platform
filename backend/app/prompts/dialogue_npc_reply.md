@@ -17,7 +17,7 @@ Plus echo keys if you want (ignored): `scenario_id`, `chapter_id`, `section_id`,
 2. `speaker_id` MUST be one of `input.allowed_npc_speaker_ids` (never `user`).
 3. `recipient_id` MUST be `user` OR another id from `input.allowed_npc_speaker_ids`; MUST differ from `speaker_id`.
 4. **Single-audience content**：`content` MUST read as speech **only** to that element's `recipient_id`. Do NOT pack two speeches into one object (e.g. closing to the learner AND a question to another NPC). If you need both, use **two** array elements with different `recipient_id` values.
-5. **On-stage cast lock**：Treat `section_narrative.appearing_npc_ids` as the **only** NPCs physically present in this section. Do **not** name extra colleagues/customers as if they are in the room unless they are the learner (`user`) or one of those ids. You may refer to off-stage people only in generic terms ("another stakeholder") without inventing a named person who is not in roster + user.
+5. **On-stage cast lock**：Treat `section_narrative.appearing_npc_ids` as the **only** NPCs physically present in this section. Do **not** name extra colleagues/customers as if they are in the room unless they are the learner (`user`) or one of those ids. If `character_roster` lists another NPC who is **not** in `appearing_npc_ids`, do **not** spell their `name` in dialogue — use generic phrasing ("someone on the other team"). You may refer to off-stage people only in generic terms ("another stakeholder") without inventing a named person who is not in roster + user.
 6. **expects_user_response**：
    - If `recipient_id === "user"` and you want the learner to speak next → `true`.
    - If `recipient_id === "user"` but you only acknowledge/clarify and **do not** need a reply before NPCs continue → `false`.

@@ -1,8 +1,9 @@
-"""运行期汇总与进节（API §4.1 / §4.2，PRD §6.6.5）。"""
+"""运行期汇总与进节（API §4.1 / §4.2，中台 §6.6.5）。"""
 
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from pydantic import ValidationError
@@ -465,7 +466,7 @@ class RuntimeService:
             }
             try:
                 raw_npc = await self.llm.generate_dialogue_npc_reply_json(payload=npc_payload)
-                npc_records = self._clip_single_npc_section_batch(
+                npc_records = self._finalize_parsed_npc_turns(
                     self._parse_npc_reply_turns(
                         raw_npc,
                         scenario_id,
@@ -473,7 +474,9 @@ class RuntimeService:
                         section_id,
                         allowed_speakers=allowed_speakers,
                     ),
-                    allowed_speakers,
+                    allowed_speakers=allowed_speakers,
+                    roster=roster,
+                    appearing_npc_ids=narrative.appearing_npc_ids,
                 )
                 if not npc_records:
                     raw2 = await self.llm.generate_dialogue_npc_reply_json(
@@ -481,7 +484,7 @@ class RuntimeService:
                         repair_hint=self._dialogue_npc_repair_hint(allowed_speakers),
                         temperature=0.35,
                     )
-                    npc_records = self._clip_single_npc_section_batch(
+                    npc_records = self._finalize_parsed_npc_turns(
                         self._parse_npc_reply_turns(
                             raw2,
                             scenario_id,
@@ -489,7 +492,9 @@ class RuntimeService:
                             section_id,
                             allowed_speakers=allowed_speakers,
                         ),
-                        allowed_speakers,
+                        allowed_speakers=allowed_speakers,
+                        roster=roster,
+                        appearing_npc_ids=narrative.appearing_npc_ids,
                     )
                 if not npc_records:
                     raise LlmFailureError(message="NPC 续聊 JSON 校验失败")
@@ -507,7 +512,7 @@ class RuntimeService:
                         repair_hint=self._dialogue_npc_repair_hint(allowed_speakers),
                         temperature=0.25,
                     )
-                    npc_records = self._clip_single_npc_section_batch(
+                    npc_records = self._finalize_parsed_npc_turns(
                         self._parse_npc_reply_turns(
                             raw3,
                             scenario_id,
@@ -515,7 +520,9 @@ class RuntimeService:
                             section_id,
                             allowed_speakers=allowed_speakers,
                         ),
-                        allowed_speakers,
+                        allowed_speakers=allowed_speakers,
+                        roster=roster,
+                        appearing_npc_ids=narrative.appearing_npc_ids,
                     )
                     if not npc_records:
                         raise LlmFailureError(message="NPC 续聊 JSON 校验失败")
@@ -619,6 +626,67 @@ class RuntimeService:
             return records[:1]
         return records
 
+    def _finalize_parsed_npc_turns(
+        self,
+        parsed: list[TurnRecord],
+        *,
+        allowed_speakers: set[str],
+        roster: CharacterRosterFile,
+        appearing_npc_ids: list[str],
+    ) -> list[TurnRecord]:
+        clipped = self._clip_single_npc_section_batch(parsed, allowed_speakers)
+        if clipped and not self._npc_turn_batch_passes_roster_stage_lock(
+            clipped, roster, appearing_npc_ids
+        ):
+            return []
+        return clipped
+
+    @staticmethod
+    def _offstage_roster_display_names(
+        roster: CharacterRosterFile,
+        appearing_npc_ids: list[str],
+    ) -> list[str]:
+        on_stage = set(appearing_npc_ids)
+        names: list[str] = []
+        seen: set[str] = set()
+        for c in roster.character_roster.characters:
+            if c.is_user or c.character_id in on_stage:
+                continue
+            n = c.name.strip()
+            if len(n) < 3 or n.lower() in seen:
+                continue
+            seen.add(n.lower())
+            names.append(n)
+        names.sort(key=len, reverse=True)
+        return names
+
+    @staticmethod
+    def _content_mentions_display_name(content: str, name: str) -> bool:
+        if not name:
+            return False
+        pat = r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])"
+        return re.search(pat, content, flags=re.IGNORECASE) is not None
+
+    @staticmethod
+    def _npc_turn_batch_passes_roster_stage_lock(
+        records: list[TurnRecord],
+        roster: CharacterRosterFile,
+        appearing_npc_ids: list[str],
+    ) -> bool:
+        forbidden = RuntimeService._offstage_roster_display_names(roster, appearing_npc_ids)
+        if not forbidden:
+            return True
+        for rec in records:
+            text = rec.content
+            for name in forbidden:
+                if RuntimeService._content_mentions_display_name(text, name):
+                    logger.info(
+                        "npc_turns rejected: roster peer %r not in appearing_npc_ids appears in content",
+                        name,
+                    )
+                    return False
+        return True
+
     @staticmethod
     def _dialogue_npc_repair_hint(allowed_speakers: set[str]) -> str:
         ids = ", ".join(sorted(allowed_speakers))
@@ -629,6 +697,10 @@ class RuntimeService:
             "speaker_id must never be user. speaker_id and recipient_id must differ. "
             "Each content addresses ONLY that object's recipient — no 'UserName, ... Mark, ...' in one line; split into separate objects. "
             "Do NOT invent on-stage characters not in appearing_npc_ids from input section_narrative. "
+            "Do NOT spell the display names of roster characters whose character_id is NOT in appearing_npc_ids "
+            "(off-stage peers); refer generically if needed. "
+            "When recipient_id is user, do not embed imperative lines clearly meant for another on-stage NPC in the same bubble; "
+            "use a separate npc_turn with recipient_id set to that NPC. "
             "For NPC-to-NPC lines set recipient_id to the other NPC and expects_user_response false. "
             "The LAST object in npc_turns MUST have recipient_id user and expects_user_response true so the learner can reply. "
             "If only one NPC is on stage, npc_turns length MUST be 1."
