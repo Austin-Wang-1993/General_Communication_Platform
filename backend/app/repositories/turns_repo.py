@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -71,3 +72,48 @@ class TurnsRepo:
                 ) from e
 
         await asyncio.to_thread(_append)
+
+    async def pop_last_turn_if_turn_id(
+        self,
+        scenario_id: str,
+        chapter_id: int,
+        section_id: int,
+        *,
+        turn_id: str,
+    ) -> bool:
+        """若 `turns.jsonl` 末行 JSON 的 `turn_id` 与参数一致则删除该行并覆写文件。
+
+        用于在用户发言已落盘但 NPC 续写失败时回滚，避免「用户独白」卡死运行态。
+        """
+
+        path = self.turns_path(scenario_id, chapter_id, section_id)
+
+        def _pop() -> bool:
+            if not path.exists():
+                return False
+            try:
+                lines: list[str] = []
+                with path.open(encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            lines.append(line.rstrip("\n"))
+                if not lines:
+                    return False
+                last_obj = json.loads(lines[-1])
+                if not isinstance(last_obj, dict) or str(last_obj.get("turn_id", "")) != turn_id:
+                    return False
+                lines.pop()
+                path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = path.with_suffix(path.suffix + ".tmp")
+                with tmp.open("w", encoding="utf-8") as wf:
+                    for raw in lines:
+                        wf.write(raw + "\n")
+                os.replace(tmp, path)
+                return True
+            except Exception as e:
+                raise RepositoryIoError(
+                    message="回滚 turns.jsonl 末行失败",
+                    details={"path": str(path), "error": str(e)},
+                ) from e
+
+        return await asyncio.to_thread(_pop)

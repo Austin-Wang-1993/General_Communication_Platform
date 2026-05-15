@@ -154,11 +154,20 @@ export function ChatPage() {
   }, [scenarioId]);
 
   const sendM = useMutation({
-    mutationFn: () =>
-      postUserTurn(scenarioId, ch, sec, {
+    mutationFn: () => {
+      const fresh = qc.getQueryData(['runtime', scenarioId]) as RuntimeShape | undefined;
+      const curCh = fresh?.current_chapter_id ?? ch;
+      const curSec = fresh?.current_section_id ?? sec;
+      const allowed = fresh?.section_narrative?.appearing_npc_ids ?? appearing;
+      let rid = recipientId;
+      if (allowed.length && !allowed.includes(rid)) {
+        rid = allowed[0]!;
+      }
+      return postUserTurn(scenarioId, curCh, curSec, {
         content: input.trim(),
-        recipient_id: recipientId,
-      }),
+        recipient_id: rid,
+      });
+    },
     onSuccess: (data) => {
       setInput('');
       const res = data as { new_turns?: TurnRow[]; runtime_awaiting_user?: boolean };

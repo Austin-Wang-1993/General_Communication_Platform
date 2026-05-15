@@ -554,6 +554,7 @@ class RuntimeService:
                         baseline_turns=mid_turns,
                         appearing_npc_ids=narrative.appearing_npc_ids,
                     )
+                npc_records = self._coerce_last_npc_user_expects_true(npc_records)
                 for rec in npc_records:
                     await self.turns_repo.append(
                         scenario_id,
@@ -562,7 +563,14 @@ class RuntimeService:
                         rec.model_dump(mode="json"),
                     )
             except LlmFailureError:
-                pkg.runtime_awaiting_user = False
+                await self.turns_repo.pop_last_turn_if_turn_id(
+                    scenario_id,
+                    chapter_id,
+                    section_id,
+                    turn_id=str(user_turn.turn_id),
+                )
+                turns_rolled = await self.turns_repo.read_all(scenario_id, chapter_id, section_id)
+                pkg.runtime_awaiting_user = self._awaiting_from_turns(turns_rolled)
                 pkg.updated_at = utc_now_rfc3339()
                 await self.package_repo.save(pkg)
                 raise
@@ -759,6 +767,31 @@ class RuntimeService:
                 appearing_npc_ids=appearing_npc_ids,
             )
             prior.append(rd)
+        if records and records[-1].recipient_id != "user":
+            raise InvalidTurnError(
+                message="NPC 续写批次末条必须把发言权交回练习者（recipient_id 须为 user）",
+                details={
+                    "rule": "terminal_batch_user",
+                    "last_speaker_id": records[-1].speaker_id,
+                    "last_recipient_id": records[-1].recipient_id,
+                },
+            )
+
+    @staticmethod
+    def _coerce_last_npc_user_expects_true(records: list[TurnRecord]) -> list[TurnRecord]:
+        """模型常在「末条已对 user 说话」时仍将 expects_user_response 标为 false，导致运行态误判为不等待用户（409）。
+
+        在已通过逐条 §6.6.4 校验后，仅将末条对 user 的回合显式标为等待练习者接话；不改变 speaker/recipient/content。
+        """
+        if not records:
+            return records
+        last = records[-1]
+        if last.recipient_id != "user":
+            return records
+        if turn_expects_user_reply_active(last.model_dump(mode="json")):
+            return records
+        fixed = last.model_copy(update={"expects_user_response": True})
+        return records[:-1] + [fixed]
 
     def _parse_npc_reply_turns(
         self,
