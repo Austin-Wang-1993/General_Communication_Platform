@@ -69,6 +69,12 @@ class ScenarioNotFoundError(GcpError):
     message = "场景包不存在或已被删除"
 
 
+class RawFileNotFoundError(GcpError):
+    http_status = 404
+    error_code = "raw_file_not_found"
+    message = "请求的静态 JSON 文件不存在或不可读"
+
+
 class LifecyclePhaseError(GcpError):
     http_status = 409
     error_code = "lifecycle_phase_invalid"

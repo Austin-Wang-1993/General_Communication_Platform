@@ -6,5 +6,6 @@
 - creation_jobs.py      PRD §6.2~§6.5 异步 Job + 进度查询（M3+）
 - runtime.py            PRD §6.6 + §6.6.5 enter / turns / auto-opener（M5）
 - hints.py              PRD §6.7（M5.5）
+- debug_raw.py          §7.2 调试 raw-file（M6+）
 - analytics.py          PRD §6.8（M5.5）
 """
