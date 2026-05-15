@@ -349,6 +349,8 @@ export function ChatPage() {
             <div className="space-y-2">
               {turns.map((t, i) => {
                 const isUser = t.speaker_id === 'user';
+                const speakerLabel = nameById.get(t.speaker_id || '') || t.speaker_id || '…';
+                const recipientLabel = nameById.get(t.recipient_id || '') || t.recipient_id || '…';
                 return (
                   <div key={t.turn_id || i} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                     <div
@@ -359,7 +361,12 @@ export function ChatPage() {
                     >
                       {!isUser && (
                         <p className="text-[10px] opacity-80 mb-1">
-                          {nameById.get(t.speaker_id || '') || t.speaker_id}
+                          {speakerLabel}
+                        </p>
+                      )}
+                      {isUser && (
+                        <p className="text-[10px] text-emerald-100/90 mb-1 text-right">
+                          {speakerLabel} → {recipientLabel}
                         </p>
                       )}
                       <p className="whitespace-pre-wrap">{t.content}</p>
