@@ -1,6 +1,6 @@
 # API 接口文档
 
-> **文档版本**：v0.1.7  
+> **文档版本**：v0.1.8  
 > **更新时间**：2026-05-14  
 > **关联**：`../product/01-产品需求文档.md`、`../product/02-前端需求文档.md`、`01-技术方案.md`、`02-代码架构与目录约定.md`  
 > **本文是什么**：HTTP 接口的**完整契约**——每个接口的方法、路径、请求体、响应体、错误码、前置条件、PRD 字段映射、示例。  
@@ -577,6 +577,8 @@
 
 - `lifecycle_phase ∈ { creation_succeeded, runtime_active }`。
 
+**运行指针未设置**：若包已完成创作但 `current_chapter_id` / `current_section_id` 仍为 `null`（例如世界 Job 刚结束、用户尚未进过任何小节），本接口返回 **409**、`error_code: lifecycle_phase_invalid`，`message` 含「运行指针未设置」，`details.hint` 提示先调用 `POST …/sections/{ch}/{sec}/enter`。**C 端 P3**（见前端需求 **F-P3-00**）应在首入时自动按 `framework.json` 全书首小节 **S[0]** 调用该 `enter`，**不要**把 `details.hint` 的原始接口路径当作面向用户的主文案。
+
 **成功响应 200**：
 
 ```json
@@ -1100,6 +1102,7 @@ PRD §6.6.3 字段一一映射：
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v0.1.8 | 2026-05-14 | §4.1 补充「运行指针未设置」409 语义与 C 端首入自动 `enter(S[0])` 约定（对齐 **F-P3-00**） |
 | v0.1.7 | 2026-05-14 | 实现 §7.2 `GET /debug/raw-file`；错误码表新增 `raw_file_not_found`；健康检查示例版本号同步 |
 | v0.1.1 | 2026-05-14 | **交叉审阅修复**：① §3.1 `POST /jobs/framework` 前置条件细化：明确允许 `intake_committed` 状态下已有 framework 的"重生成"语义，与 PRD v0.5.2 §5.4 `intake_committed` 扩充语义对齐；② §3.2 `POST /jobs/world` 前置条件改为"已有 sections 时必须 `force_regenerate=true`"，去掉允许 `creation_running` 的歧义；③ §0.8 错误码总表加 `sections_already_exist`（HTTP 409） |
 | v0.1.0 | 2026-05-14 | 初稿：全部接口完整契约（请求/响应/错误码/PRD 映射/前端故事追溯） |

@@ -1,8 +1,8 @@
 /**
- * P3 对话主界面：顶栏工具条（前端需求 §3.10 F-P3-01～05）+ P3a 进节 + R1/R2 弹窗。
+ * P3 对话主界面：顶栏工具条（前端需求 §3.10 **F-P3-00**、F-P3-01～05）+ P3a 进节 + R1/R2 弹窗。
  */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 
@@ -81,6 +81,7 @@ export function ChatPage() {
   const [lastGoodAnalytics, setLastGoodAnalytics] = useState<AnalyticsShape | null>(null);
 
   const [toast, setToast] = useState<string | null>(null);
+  const didAttemptAutoEnter = useRef(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -145,6 +146,13 @@ export function ChatPage() {
     },
   });
 
+  useEffect(() => {
+    didAttemptAutoEnter.current = false;
+    enterM.reset();
+    // 仅切换场景包时重置；不把 enterM 放入依赖以免引用抖动导致反复清空
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [scenarioId]);
+
   const sendM = useMutation({
     mutationFn: () =>
       postUserTurn(scenarioId, ch, sec, {
@@ -156,6 +164,19 @@ export function ChatPage() {
       void qc.invalidateQueries({ queryKey: ['runtime', scenarioId] });
     },
   });
+
+  const pointerUnset =
+    rtQ.isError && rtQ.error && isRuntimePointerUnsetError(rtQ.error);
+  const suppressRuntimeErrorCard = Boolean(pointerUnset && !enterM.isError);
+
+  useEffect(() => {
+    if (!scenarioId) return;
+    if (!pointerUnset || didAttemptAutoEnter.current) return;
+    if (fwQ.isLoading) return;
+    didAttemptAutoEnter.current = true;
+    const ids = fwQ.isError ? { c: 1, s: 1 } : firstSectionS0(fwQ.data);
+    enterM.mutate(ids);
+  }, [scenarioId, pointerUnset, fwQ.isLoading, fwQ.isError, fwQ.data, enterM]);
 
   const lifecycleErr =
     rtQ.error instanceof ApiError && rtQ.error.errorCode === 'lifecycle_phase_invalid'
@@ -225,7 +246,7 @@ export function ChatPage() {
     }
   }
 
-  const toolbar = rt ? (
+  const toolbar = rt || suppressRuntimeErrorCard ? (
     <div className="flex gap-1 overflow-x-auto pb-0.5 max-w-lg mx-auto w-full [-webkit-overflow-scrolling:touch]">
       <Link
         to="/scenarios"
@@ -234,23 +255,37 @@ export function ChatPage() {
       >
         返回首页
       </Link>
-      <button type="button" className="shrink-0 btn-secondary text-xs py-1.5 px-2" onClick={() => setBgOpen(true)}>
-        背景介绍
-      </button>
-      <button
-        type="button"
-        className="shrink-0 btn-secondary text-xs py-1.5 px-2 disabled:opacity-40"
-        disabled={!hintAllowed}
-        onClick={() => void openHintFlow()}
-      >
-        回答提示
-      </button>
-      <button type="button" className="shrink-0 btn-secondary text-xs py-1.5 px-2" onClick={() => void openAnalyticsFlow()}>
-        总结分析
-      </button>
-      <button type="button" className="shrink-0 btn-secondary text-xs py-1.5 px-2" onClick={() => setChapterOpen(true)}>
-        查看列表
-      </button>
+      {rt && (
+        <>
+          <button type="button" className="shrink-0 btn-secondary text-xs py-1.5 px-2" onClick={() => setBgOpen(true)}>
+            背景介绍
+          </button>
+          <button
+            type="button"
+            className="shrink-0 btn-secondary text-xs py-1.5 px-2 disabled:opacity-40"
+            disabled={!hintAllowed}
+            onClick={() => void openHintFlow()}
+          >
+            回答提示
+          </button>
+          <button type="button" className="shrink-0 btn-secondary text-xs py-1.5 px-2" onClick={() => void openAnalyticsFlow()}>
+            总结分析
+          </button>
+          <button type="button" className="shrink-0 btn-secondary text-xs py-1.5 px-2" onClick={() => setChapterOpen(true)}>
+            查看列表
+          </button>
+        </>
+      )}
+      {!rt && suppressRuntimeErrorCard && (
+        <button
+          type="button"
+          className="shrink-0 btn-secondary text-xs py-1.5 px-2 disabled:opacity-40"
+          disabled={fwQ.isLoading || enterM.isPending}
+          onClick={() => setChapterOpen(true)}
+        >
+          查看列表
+        </button>
+      )}
     </div>
   ) : null;
 
@@ -263,11 +298,26 @@ export function ChatPage() {
       )}
 
       <main className="flex-1 overflow-y-auto px-3 py-3 space-y-3 max-w-lg mx-auto w-full pb-44">
-        {rtQ.isLoading && <p className="text-sm text-ink-soft text-center">加载运行态…</p>}
+        {rtQ.isLoading && !suppressRuntimeErrorCard && (
+          <p className="text-sm text-ink-soft text-center">加载运行态…</p>
+        )}
 
-        {rtQ.isError && (
+        {suppressRuntimeErrorCard && (
+          <div className="card space-y-2 text-sm text-ink">
+            <p className="text-ink font-medium">正在为你准备对话</p>
+            <p className="text-xs text-ink-soft leading-relaxed">
+              {fwQ.isLoading && '正在读取章节结构…'}
+              {!fwQ.isLoading && enterM.isPending && '正在进入全书第一个练习小节，并触发 NPC 开场…'}
+              {!fwQ.isLoading && !enterM.isPending && enterM.isSuccess && !rt && '正在加载会话…'}
+              {!fwQ.isLoading && !enterM.isPending && !enterM.isSuccess && !enterM.isError && '正在初始化…'}
+            </p>
+          </div>
+        )}
+
+        {rtQ.isError && !suppressRuntimeErrorCard && (
           <div className="card space-y-3 text-sm">
             <p className="text-danger">无法加载对话：{errMsg(rtQ.error)}</p>
+            {enterM.isError && <p className="text-danger text-xs">进节失败：{errMsg(enterM.error)}</p>}
             {(lifecycleErr || pointerHint) && (
               <p className="text-xs text-ink-soft leading-relaxed">
                 {pointerHint || '若创作已完成，请选择一节进入以开始对话。'}
@@ -277,9 +327,9 @@ export function ChatPage() {
               type="button"
               className="btn-primary w-full"
               disabled={enterM.isPending}
-              onClick={() => enterM.mutate({ c: 1, s: 1 })}
+              onClick={() => enterM.mutate(firstSectionS0(fwQ.data))}
             >
-              {enterM.isPending ? '进节中…' : '尝试进入 第1章第1节'}
+              {enterM.isPending ? '进节中…' : '重试进入首个小节'}
             </button>
             <button type="button" className="btn-secondary w-full" onClick={() => setChapterOpen(true)}>
               查看列表…
@@ -545,6 +595,24 @@ function ModalShell(props: { title: string; children: ReactNode; onClose: () => 
       </div>
     </div>
   );
+}
+
+function isRuntimePointerUnsetError(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    err.errorCode === 'lifecycle_phase_invalid' &&
+    err.message.includes('运行指针未设置')
+  );
+}
+
+/** 全书叙事顺序首小节 S[0]：framework 第一章第一节；缺省回退 1-1 */
+function firstSectionS0(chapters: FrameworkChapter[] | undefined): { c: number; s: number } {
+  const ch0 = chapters?.[0];
+  const s0 = ch0?.sections?.[0];
+  if (ch0 && s0) {
+    return { c: ch0.chapter_id, s: s0.section_id };
+  }
+  return { c: 1, s: 1 };
 }
 
 function errMsg(e: unknown): string {
