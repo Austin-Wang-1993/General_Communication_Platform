@@ -10,6 +10,19 @@ from app.errors import InvalidTurnError, NpcNpcChainTooLongError, RuntimeNotAwai
 USER = "user"
 
 
+def turn_expects_user_reply_active(t: Mapping[str, Any]) -> bool:
+    """与 `RuntimeService._awaiting_from_turns` 一致：本条是否把运行态置于「等待用户下一条发言」。
+
+    仅将 **显式真值** 视为 True（避免 JSON 里字符串 `"false"` 被 Python `bool("false")` 误判为 True）。
+    """
+    v = t.get("expects_user_response")
+    if v is True:
+        return True
+    if isinstance(v, str) and v.strip().lower() in ("true", "1", "yes"):
+        return True
+    return False
+
+
 def is_npc_npc_turn(t: Mapping[str, Any]) -> bool:
     """§6.6.4 规则 6：双方均非练习者。"""
     return t.get("speaker_id") != USER and t.get("recipient_id") != USER
@@ -67,7 +80,7 @@ def validate_user_turn_for_append(
             details={"reason": "no_turns_yet_use_enter_or_auto_opener"},
         )
     last = prior_turns[-1]
-    if not last.get("expects_user_response"):
+    if not turn_expects_user_reply_active(last):
         raise RuntimeNotAwaitingUserError(
             details={"reason": "last_turn_not_expecting_user"},
         )

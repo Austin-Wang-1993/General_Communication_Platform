@@ -28,6 +28,7 @@ from app.repositories.hints_repo import HintsRepo
 from app.repositories.package_repo import PackageRepo
 from app.repositories.roster_repo import RosterRepo
 from app.repositories.turns_repo import TurnsRepo
+from app.validators.turn_rules import turn_expects_user_reply_active
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class HintsService:
     @staticmethod
     def _last_npc_expecting_user(turns: list[dict[str, Any]]) -> dict[str, Any] | None:
         for t in reversed(turns):
-            if t.get("expects_user_response") and t.get("speaker_id") != "user":
+            if turn_expects_user_reply_active(t) and t.get("speaker_id") != "user":
                 return t
         return None
 
@@ -166,7 +167,14 @@ class HintsService:
                         "current_section_id": pkg.current_section_id,
                     },
                 )
-            if not pkg.runtime_awaiting_user:
+
+            turns = await self.turns_repo.read_all(scenario_id, chapter_id, section_id)
+            awaiting_user = (
+                turn_expects_user_reply_active(turns[-1])
+                if turns
+                else False
+            )
+            if not awaiting_user:
                 raise RuntimeNotAwaitingUserError()
 
             fw_raw = await self.framework_repo.load_raw(scenario_id)
@@ -175,7 +183,6 @@ class HintsService:
             sf = StoryFrameworkFile.model_validate(fw_raw)
             self._locate_section(sf, chapter_id, section_id)
 
-            turns = await self.turns_repo.read_all(scenario_id, chapter_id, section_id)
             self._assert_target_turn(turns, target_turn_id)
 
             narrative = await self._load_narrative(scenario_id, chapter_id, section_id)

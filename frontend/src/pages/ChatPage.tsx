@@ -159,8 +159,13 @@ export function ChatPage() {
         content: input.trim(),
         recipient_id: recipientId,
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       setInput('');
+      const res = data as { new_turns?: TurnRow[]; runtime_awaiting_user?: boolean };
+      qc.setQueryData(['runtime', scenarioId], (old: RuntimeShape | undefined) => {
+        if (!old) return old;
+        return mergeRuntimeAfterUserPost(old, res);
+      });
       void qc.invalidateQueries({ queryKey: ['runtime', scenarioId] });
     },
   });
@@ -566,11 +571,44 @@ export function ChatPage() {
 function lastNpcAwaitingUserTurnId(turns: TurnRow[]): string | null {
   for (let i = turns.length - 1; i >= 0; i--) {
     const t = turns[i]!;
-    if (t.speaker_id && t.speaker_id !== 'user' && t.expects_user_response && t.turn_id) {
+    if (t.speaker_id && t.speaker_id !== 'user' && turnExpectsUserReplyActive(t) && t.turn_id) {
       return t.turn_id;
     }
   }
   return null;
+}
+
+/** 与后端 `turn_expects_user_reply_active` 一致，避免 JSON 字符串误判 */
+function turnExpectsUserReplyActive(t: TurnRow | undefined): boolean {
+  if (!t) return false;
+  const v: unknown = t.expects_user_response;
+  if (v === true) return true;
+  if (typeof v === 'string' && ['true', '1', 'yes'].includes(v.trim().toLowerCase())) return true;
+  return false;
+}
+
+function mergeRuntimeAfterUserPost(
+  old: RuntimeShape,
+  res: { new_turns?: TurnRow[]; runtime_awaiting_user?: boolean },
+): RuntimeShape {
+  const incoming = res.new_turns ?? [];
+  const mergedTurns = [...(old.turns ?? [])];
+  for (const t of incoming) {
+    const id = t.turn_id;
+    if (id) {
+      const ix = mergedTurns.findIndex((x) => x.turn_id === id);
+      if (ix >= 0) mergedTurns[ix] = t;
+      else mergedTurns.push(t);
+    } else {
+      mergedTurns.push(t);
+    }
+  }
+  const ru = res.runtime_awaiting_user;
+  return {
+    ...old,
+    turns: mergedTurns,
+    runtime_awaiting_user: typeof ru === 'boolean' ? ru : Boolean(old.runtime_awaiting_user),
+  };
 }
 
 function ModalShell(props: { title: string; children: ReactNode; onClose: () => void }) {

@@ -8,6 +8,7 @@ from app.errors import InvalidTurnError, NpcNpcChainTooLongError, RuntimeNotAwai
 from app.validators.turn_rules import (
     is_npc_npc_turn,
     trailing_npc_npc_count,
+    turn_expects_user_reply_active,
     validate_npc_turn_for_append,
     validate_user_turn_for_append,
 )
@@ -27,6 +28,14 @@ def test_trailing_npc_npc_count() -> None:
         {"speaker_id": "a", "recipient_id": "b"},
     ]
     assert trailing_npc_npc_count(t) == 3
+
+
+def test_turn_expects_user_reply_active_coerces_string() -> None:
+    assert turn_expects_user_reply_active({"expects_user_response": True}) is True
+    assert turn_expects_user_reply_active({"expects_user_response": False}) is False
+    assert turn_expects_user_reply_active({"expects_user_response": "false"}) is False
+    assert turn_expects_user_reply_active({"expects_user_response": "true"}) is True
+    assert turn_expects_user_reply_active({}) is False
 
 
 def test_validate_user_turn_ok() -> None:

@@ -44,7 +44,11 @@ from app.repositories.hints_repo import HintsRepo
 from app.repositories.package_repo import PackageRepo
 from app.repositories.roster_repo import RosterRepo
 from app.repositories.turns_repo import TurnsRepo
-from app.validators.turn_rules import validate_npc_turn_for_append, validate_user_turn_for_append
+from app.validators.turn_rules import (
+    turn_expects_user_reply_active,
+    validate_npc_turn_for_append,
+    validate_user_turn_for_append,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +116,7 @@ class RuntimeService:
     def _awaiting_from_turns(turns: list[dict[str, Any]]) -> bool:
         if not turns:
             return False
-        return bool(turns[-1].get("expects_user_response"))
+        return turn_expects_user_reply_active(turns[-1])
 
     async def _load_narrative(self, scenario_id: str, ch: int, sec: int) -> SectionNarrativePayload:
         path = self.package_repo.package_dir(scenario_id) / "sections" / f"ch{ch}_sec{sec}" / "narrative.json"
