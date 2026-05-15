@@ -1,10 +1,10 @@
 # API 接口文档
 
-> **文档版本**：v0.1.9  
+> **文档版本**：v0.1.10  
 > **更新时间**：2026-05-14  
-> **关联**：`../product/01-产品需求文档.md`、`../product/02-前端需求文档.md`、`01-技术方案.md`、`02-代码架构与目录约定.md`  
-> **本文是什么**：HTTP 接口的**完整契约**——每个接口的方法、路径、请求体、响应体、错误码、前置条件、PRD 字段映射、示例。  
-> **本文不是什么**：不是业务流程描述（看 `04-业务流程与状态机.md`）；不是字段语义定义（看 PRD）。
+> **关联**：`../product/01-中台产品文档.md`（中台 v0.5.8）、`../product/02-前端需求文档.md`（v0.2.9）、`01-技术方案.md`（v0.3.10）、`02-代码架构与目录约定.md`（v0.1.8）  
+> **本文是什么**：HTTP 接口的**完整契约**——每个接口的方法、路径、请求体、响应体、错误码、前置条件、**中台**字段映射、示例。  
+> **本文不是什么**：不是业务流程描述（看 `04-业务流程与状态机.md`）；不是字段语义定义（看 **中台产品文档**）。
 
 ---
 
@@ -35,7 +35,7 @@
 - `scenario_id`：UUID v4 小写十六进制，36 字符，由服务端生成
 - `turn_id`：UUID v4，同上
 - `job_id`：UUID v4，同上
-- `character_id`：用户主角为字面量 `"user"`；NPC 见 PRD §5.2
+- `character_id`：用户主角为字面量 `"user"`；NPC 见 中台 §5.2
 
 ### 0.6 成功响应通用规则
 
@@ -84,7 +84,7 @@
 | 422 | `intake_field_too_long` | 字段超长 | commit-intake |
 | 422 | `intake_unrelated_topic` | `scene_brief` 与 `user_goal_brief` 主题完全无关 | commit-intake（业务校验） |
 | 422 | `display_name_invalid` | 含控制字符或修剪后空 | 任何含显示名的接口 |
-| 422 | `invalid_turn` | 违反 PRD §6.6.4 回合硬规则（如指针不一致、NPC 回合在等待用户期间写入等） | `POST .../turns`、自动开场落盘前 |
+| 422 | `invalid_turn` | 违反 中台 §6.6.4 回合硬规则（如指针不一致、NPC 回合在等待用户期间写入等） | `POST .../turns`、自动开场落盘前 |
 | 422 | `recipient_id_invalid` | `recipient_id` 不在当前节 `appearing_npc_ids` 中 | turns |
 | 422 | `content_empty_or_too_long` | `content` 长度 < 1 或 > 8000 | turns |
 | 422 | `pointer_target_invalid` | enter 目标 `(ch, sec)` 不存在 | enter |
@@ -112,7 +112,7 @@
 
 ### 0.11 字段命名
 
-所有 JSON 键名均 **`snake_case`**，与 PRD 字段名**逐字一致**。
+所有 JSON 键名均 **`snake_case`**，与中台 字段名**逐字一致**。
 
 ---
 
@@ -158,7 +158,7 @@
 
 **作用**：在用户点击 P2「创建新场景」时，**先**创建一个 `lifecycle_phase === "draft"` 的空包并返回 `scenario_id`；前端拿到后跳转 P2.1，后续 P2.1「下一步」时通过 `commit-intake` 锁定五字段。
 
-**关联 PRD**：§5.4 `draft` 阶段定义；§5.5 包级元数据。
+**关联中台**：§5.4 `draft` 阶段定义；§5.5 包级元数据。
 
 **请求体**：可为空 `{}`。可选携带一个用户希望的初始标题占位：
 
@@ -197,7 +197,7 @@
 
 **作用**：P2 场景列表页拉取全部场景包概览。
 
-**关联 PRD**：§5.5。
+**关联中台**：§5.5。
 
 **查询参数**：无（首版不分页）。
 
@@ -233,7 +233,7 @@
 | `packages` | array | 按 `updated_at` **降序**（最近活动的包在最前） |
 | `packages[].scenario_id` | UUID | 包主键 |
 | `packages[].scenario_title` | string | 可能为空（`draft` 阶段尚未提交五字段时） |
-| `packages[].lifecycle_phase` | enum 6 值 | PRD §5.4 |
+| `packages[].lifecycle_phase` | enum 6 值 | 中台 §5.4 |
 | `packages[].current_chapter_id` | int / null | 仅 `runtime_active` 非 null |
 | `packages[].current_section_id` | int / null | 同上 |
 
@@ -249,7 +249,7 @@
 
 **作用**：拉取单个场景包的完整摘要——元数据 + 已生成产物的存在性概览。用于 P2a / P2.5 / P3 进入时确认当前状态。
 
-**关联 PRD**：§5.5、§6.1～§6.5 产物的存在与否。
+**关联中台**：§5.5、§6.1～§6.5 产物的存在与否。
 
 **成功响应 200**：
 
@@ -292,7 +292,7 @@
 
 **作用**：P2b 删除确认后调用。**物理删除**该包整个目录 `data/scenarios/{scenario_id}/` 及 `index.json` 中的索引。
 
-**关联 PRD**：§5.5。
+**关联中台**：§5.5。
 
 **前置条件**：无（任意 `lifecycle_phase` 都允许删除，包括运行期）。
 
@@ -315,7 +315,7 @@
 
 **作用**：P2.1「下一步」调用——校验五字段、写入 `intake.json`、扩写得到 `analysis.json`、推进生命周期到 `intake_committed`。**若包内已有 framework**（用户从 P2.3 返回 P2.1 改字段再下一步），必须传 `force_reset_creation=true` 才会执行 G3 重置创作（清下游产物）。
 
-**关联 PRD**：§6.1.1 输入、§6.1.2 输出、§6.1.3 校验、G3。
+**关联中台**：§6.1.1 输入、§6.1.2 输出、§6.1.3 校验、G3。
 
 **前置条件**：
 
@@ -336,7 +336,7 @@
 }
 ```
 
-| 字段 | 类型 | 必填 | 约束（与 PRD §6.1.1 一致） |
+| 字段 | 类型 | 必填 | 约束（与 中台 §6.1.1 一致） |
 |---|---|---|---|
 | `scenario_title` | string | 是 | 修剪空白后 1~120 个 Unicode 标量值；无控制字符 |
 | `user_display_name` | string | 是 | 同上 |
@@ -371,7 +371,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `intake_snapshot` | object | 已修剪空白、已锁定的五字段 |
-| `scenario_analysis` | object | LLM 扩写结果（PRD §6.1.2） |
+| `scenario_analysis` | object | LLM 扩写结果（中台 §6.1.2） |
 | `reset_applied` | bool | 是否执行了 G3 清库（true 当且仅当 `force_reset_creation` 生效） |
 
 **错误响应**：
@@ -398,13 +398,13 @@
 
 ### 3.1 POST `/api/v1/scenario-packages/{scenario_id}/jobs/framework`
 
-**作用**：启动"剧情框架 + 角色清单"生成（PRD §6.2 + §6.3）。立即返回 `job_id`，前端 P2.2 用 `GET .../jobs/{job_id}` 轮询进度。
+**作用**：启动"剧情框架 + 角色清单"生成（中台 §6.2 + §6.3）。立即返回 `job_id`，前端 P2.2 用 `GET .../jobs/{job_id}` 轮询进度。
 
-**关联 PRD**：§6.2、§6.3、技术方案 §7、§9 M3。
+**关联中台**：§6.2、§6.3、技术方案 §7、§9 M3。
 
 **前置条件**：
 
-- `lifecycle_phase ∈ { intake_committed, creation_failed }`（与 PRD §5.4 v0.5.2 `intake_committed` 语义对齐：该状态**允许**已有 framework/roster——例如 framework job 上次成功后回到 `intake_committed`、再次调用本接口表示"重生成 framework + roster"，**直接覆盖**已有 framework.json / roster.json；若用户在 P2.1 改了五字段，应走 `commit-intake` + `force_reset_creation=true` 而不是本接口）；
+- `lifecycle_phase ∈ { intake_committed, creation_failed }`（与 中台 §5.4 v0.5.2 `intake_committed` 语义对齐：该状态**允许**已有 framework/roster——例如 framework job 上次成功后回到 `intake_committed`、再次调用本接口表示"重生成 framework + roster"，**直接覆盖**已有 framework.json / roster.json；若用户在 P2.1 改了五字段，应走 `commit-intake` + `force_reset_creation=true` 而不是本接口）；
 - 同包**不得**有未结束（`status ∈ {queued, running}`）的 framework / world job。
 
 **请求体**：可为空 `{}`。
@@ -441,7 +441,7 @@
 
 ### 3.2 POST `/api/v1/scenario-packages/{scenario_id}/jobs/world`
 
-**作用**：启动"全书小节扩写 + 任务"生成（PRD §6.4 + §6.5，循环每节）。立即返回 `job_id`，P2.4 用轮询拿进度。
+**作用**：启动"全书小节扩写 + 任务"生成（中台 §6.4 + §6.5，循环每节）。立即返回 `job_id`，P2.4 用轮询拿进度。
 
 **前置条件**：
 
@@ -598,7 +598,7 @@
     "section_id": 1,
     "section_objective": "（40~1200 字英文任务陈述）"
   },
-  "character_roster": { /* PRD §6.3.2 完整对象 */ },
+  "character_roster": { /* 中台 §6.3.2 完整对象 */ },
   "turns": [
     {
       "scenario_id": "f3a1c8d2-...",
@@ -624,8 +624,8 @@
 
 | 字段 | 说明 |
 |---|---|
-| `section_narrative` / `section_mission` | 当前节完整对象（PRD §6.4.2 / §6.5.2） |
-| `character_roster` | 角色全集（PRD §6.3.2） |
+| `section_narrative` / `section_mission` | 当前节完整对象（中台 §6.4.2 / §6.5.2） |
+| `character_roster` | 角色全集（中台 §6.3.2） |
 | `turns` | 当前节全部回合，按时间升序 |
 | `story_framework_brief` | 仅章节标题与每章节数，供 P3 顶栏"背景介绍"或导航使用；详细 framework 走 §4.6 |
 
@@ -642,7 +642,7 @@
 
 **作用**：切节进入指定小节。**核心副作用**：若目标节 `turns.jsonl` 为 0 行，**同步触发 §6.6.5 自动开场**生成第一条 NPC 开场白，并将其包含在响应中返回。
 
-**关联 PRD**：§5.5、§5.6、§6.6.5。
+**关联中台**：§5.5、§5.6、§6.6.5。
 
 **前置条件**：
 
@@ -745,7 +745,7 @@
   "scenario_id": "f3a1c8d2-...",
   "chapter_id": 2,
   "section_id": 1,
-  "turns": [ /* PRD §6.6.3 全部字段 */ ]
+  "turns": [ /* 中台 §6.6.3 全部字段 */ ]
 }
 ```
 
@@ -761,7 +761,7 @@
 
 **作用**：用户在 P3 点击「发送」时调用——服务端写入用户回合，**同步**触发 NPC 续聊（1~3 条，受 §6.6.4 规则约束），一次性返回所有新写入的 turns。
 
-**关联 PRD**：§6.6.3、§6.6.4 全 9 条规则、**§6.6.6**（多方编排与单接收方台词）。
+**关联中台**：§6.6.3、§6.6.4 全 9 条规则、**§6.6.6**（多方编排与单接收方台词）。
 
 **前置条件**：
 
@@ -819,7 +819,7 @@
 
 | 字段 | 说明 |
 |---|---|
-| `new_turns` | 数组首项**总是用户刚发的那条**；后续 **1～3** 条为本次 NPC 续写（双 NPC 时可为多条链，每条须单独满足 PRD §6.6.4；编排语义见 **PRD §6.6.6**）。 |
+| `new_turns` | 数组首项**总是用户刚发的那条**；后续 **1～3** 条为本次 NPC 续写（双 NPC 时可为多条链，每条须单独满足 中台 §6.6.4；编排语义见 **中台 §6.6.6**）。 |
 | `runtime_awaiting_user` | 调用结束后是否仍等待用户；若 NPC 续聊的最后一条 `expects_user_response === true` 则为 true |
 
 **错误响应**：
@@ -842,7 +842,7 @@
 
 **作用**：P3「回答提示」按钮——为用户当前面对的 NPC 提问生成英文参考表达。
 
-**关联 PRD**：§6.7.1～§6.7.4。
+**关联中台**：§6.7.1～§6.7.4。
 
 **前置条件**：
 
@@ -867,7 +867,7 @@
   "section_id": 1,
   "linked_turn_id": "npc-turn-2",
   "hint_status": "ready",
-  "analysis_markdown": "...（PRD §6.7.3，40~12000 字符）...",
+  "analysis_markdown": "...（中台 §6.7.3，40~12000 字符）...",
   "suggested_utterances": [
     "Could you give us a quick recap of last week's drop?",
     "What's your current hypothesis on why conversion dropped 12%?"
@@ -921,7 +921,7 @@
 
 **作用**：P3「总结分析」按钮——对当前节截至此刻的对话做总结性反馈。**同步**返回（首版）。
 
-**关联 PRD**：§6.8.1～§6.8.4、§7 R2。
+**关联中台**：§6.8.1～§6.8.4、§7 R2。
 
 **前置条件**：
 
@@ -945,7 +945,7 @@
 }
 ```
 
-**响应字段**：同 PRD §6.8.3。
+**响应字段**：同 中台 §6.8.3。
 
 **业务行为**：成功时**覆盖**已有 `analytics.json`；失败时**保留**上一份成功内容（落盘逻辑：成功才写）。
 
@@ -1040,7 +1040,7 @@
 
 ## 8. 数据契约示例：完整一个 turn 的 JSON
 
-PRD §6.6.3 字段一一映射：
+中台 §6.6.3 字段一一映射：
 
 ```json
 {
@@ -1057,7 +1057,7 @@ PRD §6.6.3 字段一一映射：
 }
 ```
 
-> **关键约束**（PRD §6.6.4 / §6.6.1 交叉）：
+> **关键约束**（中台 §6.6.4 / §6.6.1 交叉）：
 > - `turn_writer === "human_user"` ⟺ `speaker_id === "user"`
 > - `turn_writer === "model_npc"` ⟺ `speaker_id !== "user"`
 > - `expects_user_response === true` ⟹ `recipient_id === "user"`
@@ -1098,8 +1098,9 @@ PRD §6.6.3 字段一一映射：
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
-| v0.1.9 | 2026-05-14 | §4.5 `new_turns` 明确「1～3 条 NPC 续写」与 **PRD §6.6.6** 多方编排对齐；实现上 LLM 输出 `npc_turns` 批处理落盘 |
+| v0.1.10 | 2026-05-14 | 头部「关联」对齐中台/前端版本号；字段语义真源表述改为**中台产品文档** |
+| v0.1.9 | 2026-05-14 | §4.5 `new_turns` 明确「1～3 条 NPC 续写」与 **中台 §6.6.6** 多方编排对齐；实现上 LLM 输出 `npc_turns` 批处理落盘 |
 | v0.1.8 | 2026-05-14 | §4.1 补充「运行指针未设置」409 语义与 C 端首入自动 `enter(S[0])` 约定（对齐 **F-P3-00**） |
 | v0.1.7 | 2026-05-14 | 实现 §7.2 `GET /debug/raw-file`；错误码表新增 `raw_file_not_found`；健康检查示例版本号同步 |
-| v0.1.1 | 2026-05-14 | **交叉审阅修复**：① §3.1 `POST /jobs/framework` 前置条件细化：明确允许 `intake_committed` 状态下已有 framework 的"重生成"语义，与 PRD v0.5.2 §5.4 `intake_committed` 扩充语义对齐；② §3.2 `POST /jobs/world` 前置条件改为"已有 sections 时必须 `force_regenerate=true`"，去掉允许 `creation_running` 的歧义；③ §0.8 错误码总表加 `sections_already_exist`（HTTP 409） |
-| v0.1.0 | 2026-05-14 | 初稿：全部接口完整契约（请求/响应/错误码/PRD 映射/前端故事追溯） |
+| v0.1.1 | 2026-05-14 | **交叉审阅修复**：① §3.1 `POST /jobs/framework` 前置条件细化：明确允许 `intake_committed` 状态下已有 framework 的"重生成"语义，与中台 v0.5.2 §5.4 `intake_committed` 扩充语义对齐；② §3.2 `POST /jobs/world` 前置条件改为"已有 sections 时必须 `force_regenerate=true`"，去掉允许 `creation_running` 的歧义；③ §0.8 错误码总表加 `sections_already_exist`（HTTP 409） |
+| v0.1.0 | 2026-05-14 | 初稿：全部接口完整契约（请求/响应/错误码/中台映射/前端故事追溯） |
