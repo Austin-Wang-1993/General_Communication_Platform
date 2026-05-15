@@ -25,7 +25,7 @@ npm run build   # 产物在 frontend/dist/，由 Nginx 直接挂载（见 deploy
 
 - **P1** `/`：欢迎页、「知道了」、顶栏「调试模式」→ `/debug/`
 - **P2** `/scenarios`：场景包列表、`POST` 新建、`DELETE`、底部动作表（进入 / 删除）
-- **P2.1** `/scenarios/:id/setup`：五字段 + `commit-intake`，顶栏三步进度；可链到框架/世界预览
+- **P2.1** `/scenarios/:id/setup`：五字段 + `commit-intake`，顶栏三步进度；**五字段样例底纹**（产品经理职场英语示例、约 4 章联调提示）；可链到框架/世界预览
 - **P2.2 / P2.4** `/scenarios/:id/jobs/:jobId/framework|world`：轮询与取消；**成功后自动跳转** P2.3 或 P2.5 预览页
 - **P2.3** `/scenarios/:id/framework-preview`：`GET /debug/raw-file` 读 `framework.json` / `roster.json`，「下一步」启动世界 Job
 - **P2.5** `/scenarios/:id/world-preview`：按 framework 拉各节 `narrative.json` 摘要；返回列表 / 进对话

@@ -9,7 +9,7 @@
 **`main` 为当前完整功能线**：含 M1~M4、M5 运行期与 R1/R2、调试页；**§6.6.4** 回合硬规则已在 **`validators/turn_rules.py`** 接入 `POST …/turns` 与自动开场落盘路径（规则 0/1/2/3/6/7 等；NPC 续聊仍固定为「对 user 发问」故规则 8 主要由生成策略保证）。服务器请同步 **`main`**：`bash deploy/server-one-shot-sync.sh 'main'`（见 [腾讯云部署指南](docs/operations/01-腾讯云部署指南.md)）。
 
 - 后端：FastAPI + `health` + `scenario-packages`（含 **`GET /api/v1/debug/raw-file`** 白名单 JSON，供前端 P2.3/P2.5 与调试页）
-- 前端：Vite + React + TS + Tailwind；**M6 进行中**：P1~P2.1、创作三步 `CreationStepper`、P2.2/P2.4 Job 轮询（成功后自动进 **P2.3 框架预览** / **P2.5 世界预览**）、**P2.3** `/framework-preview`、**P2.5** `/world-preview`、**P3** `/chat`（气泡、`POST turns`、G8 收件人、**P3a** 章节进节）；`debugAssetsApi` + `scenariosApi` / `runtimeApi`
+- 前端：Vite + React + TS + Tailwind；**M6 进行中**：P1~P2.1（**五字段样例底纹**：浅灰斜体、「（样例）」、聚焦清空、未改则提交；示例含「约 4 章」联调提示）、创作三步 `CreationStepper`、P2.2/P2.4 Job 轮询（成功后自动进 **P2.3 框架预览** / **P2.5 世界预览**）、**P2.3** `/framework-preview`、**P2.5** `/world-preview`、**P3** `/chat`（气泡、`POST turns`、G8 收件人、**P3a** 章节进节）；`debugAssetsApi` + `scenariosApi` / `runtimeApi`
 - 调试页：`backend/app/debug_ui/`（②~⑧，含 **⑦** hints / analytics 操作区）
 - 部署：`deploy/`（含 **`server-one-shot-sync.sh`** 一键同步）
 - 用户操作手册：[`docs/operations/01-腾讯云部署指南.md`](docs/operations/01-腾讯云部署指南.md)

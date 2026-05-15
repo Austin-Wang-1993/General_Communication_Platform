@@ -2,12 +2,13 @@
  * P2.1 基本描述：五字段 + commit-intake；成功后进入 P2.2 框架 Job（前端需求 §3.5）。
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { CreationStepper } from '../components/CreationStepper';
 import { AppHeader } from '../components/layout/AppHeader';
+import { INTAKE_SAMPLES, type IntakeSampleField, isIntakeSampleText } from '../lib/intakeSamples';
 import { lifecyclePhaseLabel } from '../lib/lifecycle';
 import { ApiError } from '../services/apiClient';
 import {
@@ -35,12 +36,30 @@ export function IntakeWizardPage() {
   const [forceReset, setForceReset] = useState(false);
   const [formErr, setFormErr] = useState<string | null>(null);
 
+  const intakeHydratedRef = useRef(false);
+
   useEffect(() => {
-    const t = pkgQ.data?.scenario_title;
-    if (t && !scenarioTitle) {
-      setScenarioTitle(t);
+    intakeHydratedRef.current = false;
+  }, [scenarioId]);
+
+  useEffect(() => {
+    const pkg = pkgQ.data;
+    if (!pkg || intakeHydratedRef.current) {
+      return;
     }
-  }, [pkgQ.data?.scenario_title, scenarioTitle]);
+    const draftFresh = pkg.lifecycle_phase === 'draft' && !pkg.assets.has_intake_snapshot;
+    if (!draftFresh) {
+      intakeHydratedRef.current = true;
+      return;
+    }
+    const t = pkg.scenario_title?.trim();
+    setScenarioTitle(t || INTAKE_SAMPLES.scenario_title);
+    setDisplayName(INTAKE_SAMPLES.user_display_name);
+    setSceneBrief(INTAKE_SAMPLES.scene_brief);
+    setGoalBrief(INTAKE_SAMPLES.user_goal_brief);
+    setVocab(INTAKE_SAMPLES.vocabulary_list);
+    intakeHydratedRef.current = true;
+  }, [pkgQ.data, scenarioId]);
 
   const valid = useMemo(() => {
     const st = scenarioTitle.trim();
@@ -149,6 +168,9 @@ export function IntakeWizardPage() {
 
       <main className="flex-1 px-3 py-4 space-y-4 max-w-lg mx-auto w-full">
         <p className="text-center text-xs text-ink-soft">给我们做个简单介绍吧</p>
+        <p className="text-center text-[11px] text-ink-soft/90 leading-snug px-1">
+          浅灰斜体为可提交的示范文案（含「（样例）」）；点进输入框会清空该格。不修改直接点「下一步」即按示范内容提交。
+        </p>
 
         {pkg.assets.has_story_framework && (
           <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-ink">
@@ -171,9 +193,10 @@ export function IntakeWizardPage() {
         <label className="block text-sm">
           <span className="text-ink font-medium">场景名称</span>
           <input
-            className="mt-1 w-full rounded-md border border-border-subtle px-3 py-2 text-sm"
+            className={sampleFieldClass('scenario_title', scenarioTitle)}
             value={scenarioTitle}
             onChange={(e) => setScenarioTitle(e.target.value)}
+            onFocus={() => clearIfSample('scenario_title', scenarioTitle, setScenarioTitle)}
             maxLength={120}
           />
         </label>
@@ -181,9 +204,10 @@ export function IntakeWizardPage() {
         <label className="block text-sm">
           <span className="text-ink font-medium">你的称呼</span>
           <input
-            className="mt-1 w-full rounded-md border border-border-subtle px-3 py-2 text-sm"
+            className={sampleFieldClass('user_display_name', displayName)}
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
+            onFocus={() => clearIfSample('user_display_name', displayName, setDisplayName)}
             maxLength={120}
           />
         </label>
@@ -192,9 +216,10 @@ export function IntakeWizardPage() {
           <span className="text-ink font-medium">你梦想的场景</span>
           <span className="text-ink-soft text-xs ml-1">（≥40 字）</span>
           <textarea
-            className="mt-1 w-full min-h-[120px] rounded-md border border-border-subtle px-3 py-2 text-sm leading-relaxed"
+            className={sampleFieldClass('scene_brief', sceneBrief)}
             value={sceneBrief}
             onChange={(e) => setSceneBrief(e.target.value)}
+            onFocus={() => clearIfSample('scene_brief', sceneBrief, setSceneBrief)}
           />
         </label>
 
@@ -202,9 +227,10 @@ export function IntakeWizardPage() {
           <span className="text-ink font-medium">你的目标</span>
           <span className="text-ink-soft text-xs ml-1">（≥10 字）</span>
           <textarea
-            className="mt-1 w-full min-h-[100px] rounded-md border border-border-subtle px-3 py-2 text-sm leading-relaxed"
+            className={sampleFieldClass('user_goal_brief', goalBrief)}
             value={goalBrief}
             onChange={(e) => setGoalBrief(e.target.value)}
+            onFocus={() => clearIfSample('user_goal_brief', goalBrief, setGoalBrief)}
           />
         </label>
 
@@ -212,9 +238,10 @@ export function IntakeWizardPage() {
           <span className="text-ink font-medium">专业词汇</span>
           <span className="text-ink-soft text-xs ml-1">（可选）</span>
           <textarea
-            className="mt-1 w-full min-h-[72px] rounded-md border border-border-subtle px-3 py-2 text-sm"
+            className={sampleFieldClass('vocabulary_list', vocab)}
             value={vocab}
             onChange={(e) => setVocab(e.target.value)}
+            onFocus={() => clearIfSample('vocabulary_list', vocab, setVocab)}
           />
         </label>
       </main>
@@ -250,4 +277,25 @@ function errMsg(e: unknown): string {
     return e.message;
   }
   return String(e);
+}
+
+function clearIfSample(field: IntakeSampleField, value: string, set: (v: string) => void) {
+  if (isIntakeSampleText(field, value)) {
+    set('');
+  }
+}
+
+function sampleFieldClass(field: IntakeSampleField, value: string): string {
+  const isMulti = field === 'scene_brief' || field === 'user_goal_brief' || field === 'vocabulary_list';
+  const minH =
+    field === 'scene_brief'
+      ? ' min-h-[120px]'
+      : field === 'user_goal_brief'
+        ? ' min-h-[100px]'
+        : field === 'vocabulary_list'
+          ? ' min-h-[72px]'
+          : '';
+  const base = `mt-1 w-full rounded-md border border-border-subtle px-3 py-2 text-sm${minH}${isMulti ? ' leading-relaxed' : ''}`;
+  const sample = isIntakeSampleText(field, value) ? ' text-gray-400 italic' : ' text-ink';
+  return base + sample;
 }
