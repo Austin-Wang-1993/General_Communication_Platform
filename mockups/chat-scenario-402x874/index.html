@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=402, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>场景对话页 · 线框 402×874</title>
+  <style>
+    /* ========== 画布：固定 402×874（墨刀导入用） ========== */
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #e8e8e8;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      color: #111;
+    }
+    .canvas {
+      width: 402px;
+      height: 874px;
+      margin: 12px auto;
+      background: #fff;
+      border: 1px solid #333;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* 线框标注：闪电 = 待产品/交互细化 */
+    .wire-badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      font-size: 10px;
+      color: #1565c0;
+      line-height: 1;
+    }
+
+    /* ========== 区域 A：顶栏 ========== */
+    #region-header {
+      flex-shrink: 0;
+      border-bottom: 2px solid #333;
+      padding: 8px 10px 10px;
+    }
+    .header-toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: start;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .header-left { justify-self: start; }
+    .header-center { justify-self: center; text-align: center; max-width: 160px; }
+    .header-right { justify-self: end; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+
+    .btn-wire {
+      border: 1px solid #333;
+      background: #fff;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: default;
+      position: relative;
+      white-space: nowrap;
+    }
+    .btn-wire:active { background: #f5f5f5; }
+
+    .scenario-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .icon-pencil { font-size: 12px; opacity: 0.7; }
+
+    /* ========== 区域 B：目标进度 ========== */
+    #region-progress {
+      flex-shrink: 0;
+      padding: 8px 12px;
+      border-bottom: 1px solid #333;
+    }
+    .progress-label {
+      font-size: 12px;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .progress-track {
+      height: 8px;
+      background: #ddd;
+      border: 1px solid #333;
+      position: relative;
+      border-radius: 0;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 50%;
+      background: #1565c0;
+    }
+    .progress-bubble {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: #1565c0;
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 6px;
+      border: 1px solid #0d47a1;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    /* ========== 区域 C：聊天主区 ========== */
+    #region-chat {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 10px;
+      border-left: 1px dashed #999;
+      border-right: 1px dashed #999;
+      margin: 0 8px;
+      background: #fafafa;
+    }
+    .chat-row {
+      display: flex;
+      margin-bottom: 10px;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .chat-row.npc { justify-content: flex-start; }
+    .chat-row.user { justify-content: flex-end; }
+
+    .avatar-placeholder {
+      width: 32px;
+      height: 32px;
+      border: 1px solid #333;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #eee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #666;
+    }
+    .bubble-wrap {
+      max-width: 78%;
+      position: relative;
+    }
+    .bubble {
+      border: 1px solid #333;
+      padding: 8px 10px;
+      background: #fff;
+      font-size: 13px;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .chat-row.user .bubble {
+      background: #e8f5e9;
+    }
+    .bubble-meta {
+      font-size: 10px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    .bubble-actions {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      display: flex;
+      gap: 2px;
+    }
+    .btn-trans {
+      border: 1px solid #333;
+      background: #fffbeb;
+      font-size: 10px;
+      padding: 1px 4px;
+      cursor: default;
+    }
+
+    /* ========== 区域 D：底栏输入 ========== */
+    #region-footer {
+      flex-shrink: 0;
+      border-top: 2px solid #333;
+      padding: 8px 10px 12px;
+      background: #fff;
+    }
+    .input-row {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid #333;
+      padding: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #999;
+      background: #fff;
+    }
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .footer-actions .btn-wire { flex: 0 0 auto; }
+
+    /* 区域标签（导入后可在墨刀里隐藏） */
+    .region-tag {
+      font-size: 10px;
+      color: #666;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      font-weight: 700;
+      border-left: 3px solid #333;
+      padding-left: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 整页画布：402 × 874 -->
+  <div class="canvas" id="page-chat-scenario" aria-label="场景对话页线框 402x874">
+
+    <!-- ========== 区域 A：顶栏 ========== -->
+    <header id="region-header" aria-label="顶栏">
+      <div class="region-tag">区域 A · 顶栏</div>
+      <div class="header-toolbar">
+        <div class="header-left">
+          <button type="button" class="btn-wire" id="btn-back-catalog" aria-label="返回目录">
+            返回目录
+            <span class="wire-badge" title="待细化">⚡</span>
+          </button>
+        </div>
+        <div class="header-center">
+          <div class="scenario-name-row" id="block-scenario-title">
+            <span id="text-scenario-name">场景名称</span>
+            <span class="icon-pencil" aria-hidden="true">✎</span>
+          </div>
+        </div>
+        <div class="header-right" id="block-header-actions" aria-label="顶栏右侧操作组">
+          <button type="button" class="btn-wire" id="btn-session-analysis">会话分析<span class="wire-badge">⚡</span></button>
+          <button type="button" class="btn-wire" id="btn-hint">提示</button>
+          <button type="button" class="btn-wire" id="btn-story-bg">故事背景<span class="wire-badge">⚡</span></button>
+          <button type="button" class="btn-wire" id="btn-scenario-list">场景列表<span class="wire-badge">⚡</span></button>
+          <button type="button" class="btn-wire" id="btn-reset-chat">重置对话<span class="wire-badge">⚡</span></button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ========== 区域 B：目标进度 ========== -->
+    <section id="region-progress" aria-label="目标进度">
+      <div class="region-tag">区域 B · 目标进度</div>
+      <div class="progress-label">目标进度</div>
+      <div class="progress-track" id="widget-progress-bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+        <div class="progress-fill" id="widget-progress-fill"></div>
+        <span class="progress-bubble" id="text-progress-percent">50%</span>
+      </div>
+    </section>
+
+    <!-- ========== 区域 C：聊天主区 ========== -->
+    <main id="region-chat" aria-label="聊天记录区">
+      <div class="region-tag" style="margin-bottom: 8px;">区域 C · 聊天主区（NPC 左 / 用户右；NPC 含 翻/原）</div>
+
+      <!-- NPC 消息 1 -->
+      <div class="chat-row npc" id="row-msg-npc-1">
+        <div class="avatar-placeholder" id="avatar-npc-1">NPC</div>
+        <div class="bubble-wrap">
+          <div class="bubble-meta">NPC → 你</div>
+          <div class="bubble" id="bubble-npc-1">XXXXX</div>
+          <div class="bubble-actions">
+            <span class="btn-trans" id="btn-trans-npc-1" title="翻译切换">翻</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 用户消息 1 -->
+      <div class="chat-row user" id="row-msg-user-1">
+        <div class="bubble-wrap">
+          <div class="bubble-meta" style="text-align: right;">你 → NPC</div>
+          <div class="bubble" id="bubble-user-1">XXXXX</div>
+        </div>
+      </div>
+
+      <!-- NPC 消息 2 -->
+      <div class="chat-row npc" id="row-msg-npc-2">
+        <div class="avatar-placeholder" id="avatar-npc-2">NPC</div>
+        <div class="bubble-wrap">
+          <div class="bubble-meta">NPC → 你</div>
+          <div class="bubble" id="bubble-npc-2">XXXXX</div>
+          <div class="bubble-actions">
+            <span class="btn-trans" id="btn-trans-npc-2">翻</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 用户消息 2 -->
+      <div class="chat-row user" id="row-msg-user-2">
+        <div class="bubble-wrap">
+          <div class="bubble-meta" style="text-align: right;">你 → NPC</div>
+          <div class="bubble" id="bubble-user-2">XXXXX</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ========== 区域 D：底栏 ========== -->
+    <footer id="region-footer" aria-label="输入与发送">
+      <div class="region-tag">区域 D · 底栏</div>
+      <div class="input-row" id="input-message-placeholder" contenteditable="false">XXXXX</div>
+      <div class="footer-actions">
+        <button type="button" class="btn-wire" id="btn-select-speaker">
+          选择说话对象
+          <span class="wire-badge">⚡</span>
+        </button>
+        <button type="button" class="btn-wire" id="btn-send" style="min-width: 72px;">发送</button>
+      </div>
+    </footer>
+
+  </div>
+
+</body>
+</html>
