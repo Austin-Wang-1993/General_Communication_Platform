@@ -152,3 +152,11 @@ def get_section_analytics_service() -> "SectionAnalyticsService":
         analytics_repo=SectionAnalyticsRepo(pr.data_dir),
         llm_client=LlmClient(settings),
     )
+
+
+def get_translation_service() -> "TranslationService":
+    """句级英译中（中台 §6.9）；与场景包、回合持久化解耦。"""
+    from app.services.translation_service import TranslationService
+
+    settings = get_settings()
+    return TranslationService(llm_client=LlmClient(settings))

@@ -1,7 +1,7 @@
 """FastAPI 应用入口。
 
 按 `docs/engineering/02-代码架构与目录约定.md` §2.7 后端目录全图组织。
-M0~M5：health、场景包 CRUD、commit-intake、framework/world Job、轮询与取消、运行期 runtime + 进节 enter + turns（§6.6.4 `turn_rules` 写入前校验）；R1：`.../hints`；R2：`.../analytics`；§7.2：`GET /debug/raw-file`。
+M0~M5：health、场景包 CRUD、commit-intake、framework/world Job、轮询与取消、运行期 runtime + 进节 enter + turns（§6.6.4 `turn_rules` 写入前校验）；R1：`.../hints`；R2：`.../analytics`；§7.2：`GET /debug/raw-file`；§6.9：`POST /translation/en-to-zh`。
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from app import __version__
 from app.config import get_settings
 from app.errors import GcpError, gcp_error_handler, unhandled_exception_handler
-from app.routers import analytics, creation_jobs, debug_raw, health, hints, runtime, scenario_packages
+from app.routers import analytics, creation_jobs, debug_raw, health, hints, runtime, scenario_packages, translate
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="GCP Backend",
-        description="通用英语对话练习 · 后端 API（M0~M5 + R1 hints + R2 analytics + §6.6.4 turn_rules）",
+        description="通用英语对话练习 · 后端 API（M0~M5 + R1 hints + R2 analytics + §6.6.4 turn_rules + §6.9 translation）",
         version=__version__,
         lifespan=lifespan,
     )
@@ -73,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(hints.router, prefix="/api/v1")
     app.include_router(analytics.router, prefix="/api/v1")
     app.include_router(debug_raw.router, prefix="/api/v1")
+    app.include_router(translate.router, prefix="/api/v1")
 
     # 调试页静态资源（同进程下访问 /debug-ui/，Nginx 通过 /debug/ 别名也可指向 backend/app/debug_ui/）
     debug_ui_dir = Path(__file__).parent / "debug_ui"
